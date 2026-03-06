@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 
 // ─── TAX ENGINE ───────────────────────────────────────────────────────────────
 const FED_BRACKETS = {
