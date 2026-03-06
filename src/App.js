@@ -498,28 +498,14 @@ async function aiCategorize(transactions) {
 Rules: currentHousing=rent/mortgage/HOA. carPayment=auto loan. otherDebts=loans/credit minimums. utilities=electric/gas/water/internet/phone. groceries=supermarkets/grocery. subscriptions=Netflix/Spotify/gym/recurring. otherLiving=everything else. Divide by monthsDetected for monthly averages. ONLY JSON, no markdown.
 Transactions:\n${sample.map(t=>`${t.date}|${t.description}|$${t.amount.toFixed(2)}`).join("\n")}`;
 
-  // Try proxy first (production), fall back to direct API (local dev / artifact preview)
-  let text = "";
-  try {
-    const res = await fetch("/api/categorize", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({prompt}) });
-    if(res.ok) {
-      const data = await res.json();
-      text = data.text || "";
-    } else {
-      throw new Error("proxy unavailable");
-    }
-  } catch {
-    // Direct Anthropic API fallback
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST",
-      headers:{"Content-Type":"application/json","anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-      body:JSON.stringify({ model:"claude-haiku-4-5-20251001", max_tokens:1000, messages:[{role:"user",content:prompt}] }),
-    });
-    if(!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
-    const data = await res.json();
-    text = data.content?.[0]?.text || "";
-  }
-
+  const res = await fetch("/api/categorize", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt }),
+  });
+  if(!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  const text = data.text || "";
   const clean = text.replace(/```json|```/g,"").trim();
   return JSON.parse(clean);
 }
