@@ -93,7 +93,11 @@ function calcHome(b, sc) {
   const closing    = sc.useDefaultClose ? sc.homePrice*0.03   : sc.closingCosts;
   const loan       = Math.max(0, sc.homePrice-sc.downPayment);
   const mortgage   = calcLoanPayment(loan, sc.interestRate, sc.loanTerm);
-  const newHousing = calcHomeCost(sc.homePrice, mortgage, sc.annualTax, insurance);
+  const downPct    = sc.homePrice > 0 ? sc.downPayment / sc.homePrice : 1;
+  const pmiApplies = downPct < 0.20 && loan > 0;
+  const pmiRate    = sc.useDefaultPmi ? 0.0085 : (sc.pmiRate / 100);
+  const pmiMonthly = pmiApplies ? (loan * pmiRate) / 12 : 0;
+  const newHousing = calcHomeCost(sc.homePrice, mortgage, sc.annualTax, insurance) + pmiMonthly;
   const cashNeeded = sc.downPayment + closing;
   const remainingSavings = b.savings - cashNeeded;
   const newTotal   = baselineTotal - baselineHousing + newHousing;
@@ -108,7 +112,7 @@ function calcHome(b, sc) {
     type:"home", netIncome, taxResult, baselineTotal, baselineSurplus,
     scenarioCost:newHousing, newTotal, newSurplus, deltaSurplus,
     ratio:housingRatio, cashNeeded, remainingSavings, runway, risk,
-    mortgage, insurance, closing, comfortPrice, stretchPrice,
+    mortgage, insurance, closing, comfortPrice, stretchPrice, pmiMonthly, pmiApplies,
     label:"New Housing Cost", prevLabel:`was ${fmt(baselineHousing)}/mo`,
   };
 }
@@ -231,6 +235,15 @@ function isReady(b, sc) {
   if(sc.type === "car")  return sc.carMode === "lease" ? sc.leaseMonthly > 0 : (sc.useKnownPayment ? sc.knownPayment > 0 : sc.msrp > 0);
   if(sc.type === "job")  return sc.newAnnualSalary > 0;
   if(sc.type === "apt")  return hasIncome && sc.newRent > 0;
+  return false;
+}
+
+// Scenario-only ready check (no income required)
+function isScenarioReady(sc) {
+  if(sc.type === "home") return sc.homePrice > 0;
+  if(sc.type === "car")  return sc.carMode === "lease" ? sc.leaseMonthly > 0 : (sc.useKnownPayment ? sc.knownPayment > 0 : sc.msrp > 0);
+  if(sc.type === "job")  return sc.newAnnualSalary > 0;
+  if(sc.type === "apt")  return sc.newRent > 0;
   return false;
 }
 
@@ -577,7 +590,7 @@ function CSVUploader({ b, setB, accentColor }) {
 }
 
 // ─── TAB 1: BASELINE ─────────────────────────────────────────────────────────
-function BaselineTab({ b, setB }) {
+function BaselineTab({ b, setB, onSkip }) {
   const set=k=>v=>setB(p=>({...p,[k]:v}));
   const ac=THEME.baseline.solid;
   const taxResult=b.incomeMode==="gross"&&b.annualGross>0 ? calcNetMonthly(b.annualGross,b.filingStatus,b.state) : null;
@@ -698,6 +711,11 @@ function BaselineTab({ b, setB }) {
         </div>
       )}
       <BaselineHealthCheck b={b} />
+      <div style={{ textAlign:"center",marginTop:20 }}>
+        <button onClick={onSkip} style={{ background:"none",border:"none",fontSize:12.5,fontWeight:700,color:"#9CA3AF",cursor:"pointer",textDecoration:"underline",textUnderlineOffset:3,padding:4 }}>
+          Skip for now — just show me the numbers →
+        </button>
+      </div>
     </div>
   );
 }
@@ -858,6 +876,20 @@ function ScenarioHome({ sc, setSc }) {
         </div>
         {sc.useDefaultClose ? <EstBox text={`≈ ${fmt(sc.homePrice*0.03)}`} /> : <Num value={sc.closingCosts} onChange={set("closingCosts")} prefix="$" accentColor={ac} />}
       </Field>
+      {(()=>{ const downPct = sc.homePrice>0 ? sc.downPayment/sc.homePrice : 1; const loan = Math.max(0, sc.homePrice-sc.downPayment); const pmiApplies = downPct < 0.20 && loan > 0; if(!pmiApplies) return null;
+        const pmiAmt = sc.useDefaultPmi ? (loan*0.0085)/12 : (loan*(sc.pmiRate/100))/12;
+        return (
+          <Field label="PMI (Private Mortgage Insurance)">
+            <div style={{ display:"flex",gap:10,alignItems:"center",marginBottom:8 }}>
+              <Pill value={sc.useDefaultPmi?"est":"custom"} accentColor={ac} onChange={v=>setSc(p=>({...p,useDefaultPmi:v==="est"}))} options={[{value:"est",label:"Estimate"},{value:"custom",label:"Custom"}]} />
+              {sc.useDefaultPmi&&<span style={{ fontSize:11,color:"#C4C4C4",fontWeight:600 }}>0.85% of loan/yr</span>}
+            </div>
+            {sc.useDefaultPmi
+              ? <EstBox text={`≈ ${fmt(pmiAmt)}/mo — drops off at 20% equity`} />
+              : <Num value={sc.pmiRate||""} onChange={set("pmiRate")} suffix="% of loan/yr" accentColor={ac} />}
+          </Field>
+        );
+      })()}
     </div>
   );
 }
@@ -1046,7 +1078,78 @@ function StressBar({ ratio, passThreshold, warnThreshold, pass, warn }) {
   );
 }
 
-function ResultsTab({ r, sc, ready }) {
+// ─── SKIPPED BASELINE RESULTS ────────────────────────────────────────────────
+function SkippedResults({ r, sc, onAddIncome }) {
+  const meta = SCENARIO_META[sc.type];
+
+  // Build a simple payment breakdown based on scenario type
+  const lines = [];
+  if(sc.type === "home") {
+    if(r.mortgage)   lines.push(["Mortgage (P&I)",         r.mortgage]);
+    if(sc.annualTax) lines.push(["Property Tax",           sc.annualTax/12]);
+    const ins = sc.useDefaultIns ? sc.homePrice*0.0035 : sc.annualInsurance;
+    if(ins)          lines.push(["Homeowners Insurance",   ins/12]);
+                     lines.push(["HOA / Maintenance (est)",  (sc.homePrice*0.01)/12]);
+    if(r.pmiApplies) lines.push(["PMI",                    r.pmiMonthly]);
+  } else if(sc.type === "car") {
+    lines.push(["Monthly Payment", r.scenarioCost]);
+  } else if(sc.type === "job") {
+    lines.push(["New Gross Salary", sc.newAnnualSalary/12]);
+    if(sc.signingBonus) lines.push(["Signing Bonus", sc.signingBonus]);
+  } else if(sc.type === "apt") {
+    lines.push(["Monthly Rent", sc.newRent]);
+    if(sc.securityDeposit) lines.push(["Security Deposit (one-time)", sc.securityDeposit]);
+    if(sc.moveCosts)       lines.push(["Moving Costs (one-time)", sc.moveCosts]);
+  }
+
+  const totalMonthly = lines.filter(([l])=>!l.includes("one-time")).reduce((s,[,v])=>s+v,0);
+
+  return (
+    <div>
+      {/* Payment breakdown card */}
+      <div style={{ background:"#fff",border:"1.5px solid #F3F4F6",borderRadius:16,padding:"20px 22px",marginBottom:14 }}>
+        <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:16 }}>
+          <span style={{ fontSize:20 }}>{meta.emoji}</span>
+          <div style={{ fontSize:10,fontWeight:800,letterSpacing:"0.1em",textTransform:"uppercase",color:"#9CA3AF" }}>
+            {sc.type==="job" ? "New Salary Breakdown" : "Monthly Cost Breakdown"}
+          </div>
+        </div>
+        <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+          {lines.map(([label, val])=>(
+            <div key={label} style={{ display:"flex",justifyContent:"space-between",alignItems:"baseline" }}>
+              <span style={{ fontSize:13,color:"#4B5563",fontWeight:600 }}>{label}</span>
+              <span style={{ fontSize:14,fontWeight:800,fontFamily:"monospace",color:"#111" }}>{fmt(val)}{label.includes("one-time")?"":"/mo"}</span>
+            </div>
+          ))}
+        </div>
+        {lines.length > 1 && (
+          <div style={{ borderTop:"1px solid #F3F4F6",marginTop:12,paddingTop:12,display:"flex",justifyContent:"space-between" }}>
+            <span style={{ fontSize:13,fontWeight:800,color:"#111" }}>Total Monthly</span>
+            <span style={{ fontSize:15,fontWeight:900,fontFamily:"monospace",color:"#111" }}>{fmt(totalMonthly)}/mo</span>
+          </div>
+        )}
+      </div>
+
+      {/* Income nudge */}
+      <div style={{ background:"#F5F3FF",border:"1.5px solid #DDD6FE",borderRadius:16,padding:"20px 22px",marginBottom:14,textAlign:"center" }}>
+        <div style={{ fontSize:22,marginBottom:10 }}>📊</div>
+        <div style={{ fontSize:14,fontWeight:900,color:"#4338CA",marginBottom:6 }}>Can you actually afford this?</div>
+        <div style={{ fontSize:13,color:"#6B7280",fontWeight:500,lineHeight:1.6,marginBottom:16 }}>
+          Add your income and current expenses to see your full cash-flow analysis, surplus, and stress tests.
+        </div>
+        <button onClick={onAddIncome}
+          style={{ background:"#4338CA",color:"#fff",border:"none",borderRadius:11,padding:"11px 24px",fontSize:13,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 14px rgba(67,56,202,0.3)" }}>
+          Add my income →
+        </button>
+      </div>
+
+      {/* Affiliate links — always visible */}
+      <LeadCapture sc={sc} r={r} />
+    </div>
+  );
+}
+
+function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady }) {
   const rc=RISK_CFG[r.risk];
   const meta=SCENARIO_META[sc.type];
   const [mounted, setMounted] = useState(false);
@@ -1124,8 +1227,8 @@ function ResultsTab({ r, sc, ready }) {
         <span style={{ fontSize:12,fontWeight:800,color:meta.color }}>{meta.label}</span>
       </div>
 
-      {/* Not-ready prompt */}
-      {!ready && (
+      {/* Not-ready prompt — scenario not filled in yet */}
+      {!ready && !scenarioReady && (
         <div style={{ textAlign:"center",padding:"32px 20px",background:"#F9FAFB",border:"1.5px dashed #E5E7EB",borderRadius:18,marginBottom:14 }}>
           <div style={{ fontSize:28,marginBottom:12 }}>🧮</div>
           <div style={{ fontSize:15,fontWeight:800,color:"#374151",marginBottom:6 }}>Almost there</div>
@@ -1136,6 +1239,11 @@ function ResultsTab({ r, sc, ready }) {
             {sc.type==="apt"  && "Enter the new monthly rent on the Scenario tab to see your analysis."}
           </div>
         </div>
+      )}
+
+      {/* Skipped baseline — show payment breakdown + income nudge */}
+      {!ready && scenarioReady && skipped && (
+        <SkippedResults r={r} sc={sc} onAddIncome={onAddIncome} />
       )}
 
       {/* All results — only shown when ready */}
@@ -1182,10 +1290,10 @@ function ResultsTab({ r, sc, ready }) {
       <div style={{ background:"#fff",border:"1.5px solid #F3F4F6",borderRadius:16,padding:"20px 22px",marginBottom:14,
         opacity:mounted?1:0,transform:mounted?"none":"translateY(8px)",transition:"all 0.4s ease 0.15s" }}>
         <div style={{ fontSize:10,fontWeight:800,letterSpacing:"0.1em",textTransform:"uppercase",color:"#9CA3AF",marginBottom:16 }}>Monthly Cash Flow — Before vs. After</div>
-        <div style={{ display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,alignItems:"center" }}>
-          <div style={{ background:"#F9FAFB",borderRadius:12,padding:"14px 16px" }}>
+        <div style={{ display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,alignItems:"center",overflow:"hidden" }}>
+          <div style={{ background:"#F9FAFB",borderRadius:12,padding:"12px 12px",minWidth:0,overflow:"hidden" }}>
             <div style={{ fontSize:10,color:"#9CA3AF",fontWeight:800,textTransform:"uppercase",letterSpacing:"0.07em" }}>Before</div>
-            <div style={{ fontSize:24,fontWeight:900,color:"#111",fontFamily:"monospace",marginTop:5 }}>
+            <div style={{ fontSize:16,fontWeight:900,color:"#111",fontFamily:"monospace",marginTop:5,whiteSpace:"nowrap" }}>
               <AnimatedMoney value={r.baselineSurplus} />
             </div>
             <div style={{ fontSize:11.5,color:"#6B7280",marginTop:3,fontWeight:600 }}>surplus/mo</div>
@@ -1211,9 +1319,9 @@ function ResultsTab({ r, sc, ready }) {
               {r.deltaSurplus>=0?"+":""}<AnimatedMoney value={r.deltaSurplus} />
             </div>
           </div>
-          <div style={{ background:r.newSurplus<0?"#FEF2F2":"#F0FDF4",border:`1.5px solid ${r.newSurplus<0?"#FCA5A5":"#86EFAC"}`,borderRadius:12,padding:"14px 16px" }}>
+          <div style={{ background:r.newSurplus<0?"#FEF2F2":"#F0FDF4",border:`1.5px solid ${r.newSurplus<0?"#FCA5A5":"#86EFAC"}`,borderRadius:12,padding:"12px 12px",minWidth:0,overflow:"hidden" }}>
             <div style={{ fontSize:10,color:"#9CA3AF",fontWeight:800,textTransform:"uppercase",letterSpacing:"0.07em" }}>After</div>
-            <div style={{ fontSize:24,fontWeight:900,color:r.newSurplus<0?"#DC2626":"#059669",fontFamily:"monospace",marginTop:5 }}>
+            <div style={{ fontSize:16,fontWeight:900,color:r.newSurplus<0?"#DC2626":"#059669",fontFamily:"monospace",marginTop:5,whiteSpace:"nowrap" }}>
               <AnimatedMoney value={r.newSurplus} />
             </div>
             <div style={{ fontSize:11.5,color:"#6B7280",marginTop:3,fontWeight:600 }}>surplus/mo</div>
@@ -1303,6 +1411,33 @@ function ResultsTab({ r, sc, ready }) {
         </div>
       </div>
 
+      {/* Home monthly breakdown — home only */}
+      {sc.type==="home"&&sc.homePrice>0&&(
+        <div style={{ background:"#fff",border:"1.5px solid #F3F4F6",borderRadius:16,padding:"18px 20px",marginTop:14,
+          opacity:mounted?1:0,transform:mounted?"none":"translateY(8px)",transition:"all 0.4s ease 0.3s" }}>
+          <div style={{ fontSize:10,fontWeight:800,letterSpacing:"0.1em",textTransform:"uppercase",color:"#9CA3AF",marginBottom:12 }}>Monthly Payment Breakdown</div>
+          {[
+            ["Mortgage (P&I)", r.mortgage],
+            ["Property Tax", sc.annualTax/12],
+            ["Homeowners Insurance", (sc.useDefaultIns ? sc.homePrice*0.0035 : sc.annualInsurance)/12],
+            ["HOA / Maintenance", (sc.homePrice*0.01)/12],
+            ...(r.pmiApplies ? [["PMI", r.pmiMonthly, "#D97706"]] : []),
+          ].map(([label, val, color="#4B5563"])=>(
+            <div key={label} style={{ display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8 }}>
+              <span style={{ fontSize:12,color,fontWeight:label==="PMI"?800:600,display:"flex",alignItems:"center",gap:5 }}>
+                {label}
+                {label==="PMI"&&<span style={{ fontSize:10,background:"#FEF9C3",color:"#92400E",fontWeight:800,padding:"1px 6px",borderRadius:5 }}>drops at 20% equity</span>}
+              </span>
+              <span style={{ fontSize:13,fontWeight:800,fontFamily:"monospace",color:label==="PMI"?"#D97706":"#111" }}>{fmt(val)}/mo</span>
+            </div>
+          ))}
+          <div style={{ borderTop:"1px solid #F3F4F6",marginTop:8,paddingTop:10,display:"flex",justifyContent:"space-between" }}>
+            <span style={{ fontSize:13,fontWeight:800,color:"#111" }}>Total Housing</span>
+            <span style={{ fontSize:14,fontWeight:900,fontFamily:"monospace",color:"#111" }}>{fmt(r.scenarioCost)}/mo</span>
+          </div>
+        </div>
+      )}
+
       {/* Safe range — home only */}
       {sc.type==="home"&&r.comfortPrice&&(
         <div style={{ background:"#fff",border:"1.5px solid #F3F4F6",borderRadius:16,padding:"20px 22px",marginTop:14,
@@ -1350,6 +1485,8 @@ function ResultsTab({ r, sc, ready }) {
 
       </>)}
 
+      {ready && <LeadCapture sc={sc} r={r} />}
+
       {ready && <p style={{ textAlign:"center",fontSize:10.5,color:"#D1D5DB",marginTop:18,lineHeight:1.6 }}>
         Cash-flow analysis — not a loan approval estimate.<br />Consult a financial advisor before major decisions.
       </p>}
@@ -1357,7 +1494,160 @@ function ResultsTab({ r, sc, ready }) {
   );
 }
 
-// ─── DEFAULTS ─────────────────────────────────────────────────────────────────
+// ─── LEAD CAPTURE ─────────────────────────────────────────────────────────────
+const LEAD_META = {
+  home: {
+    headline: "Ready to take the next step?",
+    sub: "Connect with a mortgage professional or financial advisor.",
+    partners: [
+      { label:"Get mortgage rates", icon:"🏦", url:"https://www.bankrate.com/mortgages/mortgage-rates/", tag:"Mortgage Lender" },
+      { label:"Find a financial advisor", icon:"📊", url:"https://www.nerdwallet.com/advisors", tag:"Financial Advisor" },
+      { label:"Learn about home insurance", icon:"🛡️", url:"https://www.policygenius.com/homeowners-insurance/", tag:"Insurance" },
+    ],
+  },
+  car: {
+    headline: "Want help financing your next vehicle?",
+    sub: "Compare auto loan rates or find the right coverage.",
+    partners: [
+      { label:"Compare auto loan rates", icon:"🚗", url:"https://www.bankrate.com/loans/auto-loans/", tag:"Auto Loan" },
+      { label:"Get insurance quotes", icon:"🛡️", url:"https://www.policygenius.com/auto-insurance/", tag:"Auto Insurance" },
+      { label:"Talk to a financial advisor", icon:"📊", url:"https://www.nerdwallet.com/advisors", tag:"Financial Advisor" },
+    ],
+  },
+  job: {
+    headline: "Making a career move?",
+    sub: "Helpful tools for your job search and financial planning.",
+    partners: [
+      { label:"Update your resume", icon:"📄", url:"https://www.resumebuilder.com", tag:"Resume Builder" },
+      { label:"Negotiate your offer", icon:"💼", url:"https://www.levels.fyi", tag:"Salary Data" },
+      { label:"Review your benefits", icon:"📊", url:"https://www.nerdwallet.com/advisors", tag:"Financial Advisor" },
+    ],
+  },
+  apt: {
+    headline: "Ready to make your move?",
+    sub: "Connect with resources to help with your next apartment.",
+    partners: [
+      { label:"Get renters insurance", icon:"🛡️", url:"https://www.policygenius.com/renters-insurance/", tag:"Renters Insurance" },
+      { label:"Compare apartments", icon:"🏢", url:"https://www.apartments.com", tag:"Apartment Search" },
+      { label:"Talk to a financial advisor", icon:"📊", url:"https://www.nerdwallet.com/advisors", tag:"Financial Advisor" },
+    ],
+  },
+};
+
+function LeadCapture({ sc, r }) {
+  const meta = LEAD_META[sc.type] || LEAD_META.home;
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState("idle"); // idle | submitting | done | error
+  const [hovered, setHovered] = useState(null);
+
+  const handleSubmit = async () => {
+    if(!email || !email.includes("@")) return;
+    setStatus("submitting");
+    try {
+      const res = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          scenario: sc.type,
+          risk: r.risk,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+      if(!res.ok) throw new Error("failed");
+      setStatus("done");
+    } catch {
+      setStatus("error");
+    }
+  };
+
+  return (
+    <div style={{ marginTop:20,background:"#F9FAFB",border:"1.5px solid #E5E7EB",borderRadius:20,padding:"24px 22px" }}>
+
+      {status !== "done" ? (<>
+        {/* Headline */}
+        <div style={{ marginBottom:16 }}>
+          <div style={{ fontSize:15,fontWeight:900,color:"#111",marginBottom:4 }}>{meta.headline}</div>
+          <div style={{ fontSize:13,color:"#6B7280",fontWeight:500 }}>{meta.sub}</div>
+        </div>
+
+        {/* Partner links */}
+        <div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:20 }}>
+          {meta.partners.map((p,i) => (
+            <a key={i} href={p.url} target="_blank" rel="noopener noreferrer"
+              onMouseEnter={()=>setHovered(i)} onMouseLeave={()=>setHovered(null)}
+              style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",
+                background:hovered===i?"#fff":"#fff",
+                border:`1.5px solid ${hovered===i?"#A5B4FC":"#E5E7EB"}`,
+                borderRadius:12,textDecoration:"none",
+                boxShadow:hovered===i?"0 2px 12px rgba(67,56,202,0.1)":"none",
+                transform:hovered===i?"translateY(-1px)":"none",
+                transition:"all 0.15s" }}>
+              <span style={{ fontSize:20 }}>{p.icon}</span>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:13,fontWeight:800,color:"#111" }}>{p.label}</div>
+                <div style={{ fontSize:11,color:"#9CA3AF",fontWeight:600 }}>{p.tag}</div>
+              </div>
+              <span style={{ fontSize:12,color:"#A5B4FC",fontWeight:800 }}>→</span>
+            </a>
+          ))}
+        </div>
+
+        {/* Divider */}
+        <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:16 }}>
+          <div style={{ flex:1,height:1,background:"#E5E7EB" }} />
+          <span style={{ fontSize:11,fontWeight:700,color:"#D1D5DB",textTransform:"uppercase",letterSpacing:"0.08em" }}>Stay in the loop</span>
+          <div style={{ flex:1,height:1,background:"#E5E7EB" }} />
+        </div>
+
+        {/* Email capture */}
+        <div style={{ fontSize:12,color:"#6B7280",fontWeight:500,marginBottom:10,lineHeight:1.5 }}>
+          Get notified when we add new scenarios and features. No spam, ever.
+        </div>
+        <div style={{ display:"flex",gap:8 }}>
+          <input type="email" placeholder="your@email.com" value={email}
+            onChange={e=>setEmail(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&handleSubmit()}
+            style={{ flex:1,padding:"11px 14px",border:"1.5px solid #E5E7EB",borderRadius:11,
+              fontSize:14,fontFamily:"inherit",fontWeight:500,color:"#111",
+              background:"#fff",outline:"none" }} />
+          <button onClick={handleSubmit} disabled={status==="submitting"}
+            style={{ padding:"11px 18px",background:"#4338CA",color:"#fff",border:"none",
+              borderRadius:11,fontSize:13,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap",
+              opacity:status==="submitting"?0.7:1,transition:"all 0.15s" }}>
+            {status==="submitting"?"...":"Notify me"}
+          </button>
+        </div>
+        {status==="error"&&<div style={{ fontSize:12,color:"#DC2626",marginTop:8,fontWeight:600 }}>Something went wrong — try again.</div>}
+
+      </>) : (
+        /* Thank you state */
+        <div style={{ textAlign:"center",padding:"8px 0" }}>
+          <div style={{ fontSize:28,marginBottom:10 }}>🎉</div>
+          <div style={{ fontSize:15,fontWeight:900,color:"#111",marginBottom:6 }}>You're on the list!</div>
+          <div style={{ fontSize:13,color:"#6B7280",fontWeight:500,lineHeight:1.6,marginBottom:20 }}>
+            We'll let you know when new features drop. In the meantime, check out one of these resources:
+          </div>
+          <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+            {meta.partners.map((p,i) => (
+              <a key={i} href={p.url} target="_blank" rel="noopener noreferrer"
+                style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",
+                  background:"#fff",border:"1.5px solid #E5E7EB",borderRadius:12,
+                  textDecoration:"none",transition:"all 0.15s" }}>
+                <span style={{ fontSize:20 }}>{p.icon}</span>
+                <div style={{ flex:1,textAlign:"left" }}>
+                  <div style={{ fontSize:13,fontWeight:800,color:"#111" }}>{p.label}</div>
+                  <div style={{ fontSize:11,color:"#9CA3AF",fontWeight:600 }}>{p.tag}</div>
+                </div>
+                <span style={{ fontSize:12,color:"#A5B4FC",fontWeight:800 }}>→</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 const DEFAULT_B = {
   incomeMode:"gross", annualGross:0, netIncome:0,
   filingStatus:"married", state:"CT", savings:0,
@@ -1369,7 +1659,7 @@ const DEFAULT_SC_CLEAN = {
   type:"home",
   // home
   homePrice:0, downPayment:0, downPaymentPct:0, interestRate:6.8, loanTerm:30, annualTax:0,
-  annualInsurance:0, useDefaultIns:true, closingCosts:0, useDefaultClose:true,
+  annualInsurance:0, useDefaultIns:true, closingCosts:0, useDefaultClose:true, pmiRate:0.85, useDefaultPmi:true,
   // car
   carMode:"buy", msrp:0, carDownPayment:0, tradeIn:0, carRate:6.9, carTerm:5,
   useKnownPayment:false, knownPayment:0, insuranceDelta:0,
@@ -1385,7 +1675,10 @@ export default function App() {
   const [tab,setTab]=useState(0);
   const [b,setB]    =useState(DEFAULT_B);
   const [sc,setSc]  =useState(DEFAULT_SC_CLEAN);
+  const [skippedBaseline,setSkippedBaseline]=useState(false);
   const r=useMemo(()=>runCalcs(b,sc),[b,sc]);
+  const hasIncome = b.annualGross > 0 || b.netIncome > 0;
+  const scenarioReady = useMemo(()=>isScenarioReady(sc),[sc]);
   const ready=useMemo(()=>isReady(b,sc),[b,sc]);
   const th=THEME[TABS[tab]];
   return (
@@ -1411,25 +1704,19 @@ export default function App() {
         .verdict-stretch{--verdict-glow:#D9770644;--verdict-ring:#FCD34D22;}
         .verdict-risky{--verdict-glow:#DC262644;--verdict-ring:#FCA5A522;}
       `}</style>
-      <div style={{ minHeight:"100vh",padding:"28px 16px 64px",
+      <div style={{ minHeight:"100vh",padding:"52px 16px 64px",
         background:"radial-gradient(ellipse at 20% 0%,#e8e4ff 0%,transparent 60%),radial-gradient(ellipse at 80% 100%,#dff4ec 0%,transparent 60%),#F0F0EE",
         color:"#111" }}>
         <div style={{ maxWidth:520,margin:"0 auto" }}>
           {/* Header */}
           <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:28 }}>
-            <div>
-              <h1 style={{ fontSize:21,fontWeight:900,color:"#111",letterSpacing:"-0.03em",lineHeight:1.2 }}>Family Scenario<br />Simulator</h1>
-              <div style={{ display:"flex",alignItems:"center",gap:10,marginTop:4 }}>
-                <p style={{ fontSize:12,color:"#B0B0B0",fontWeight:700 }}>What if we…?</p>
-                <button onClick={()=>{ setB(DEFAULT_B); setSc(DEFAULT_SC_CLEAN); setTab(0); }}
-                  style={{ fontSize:11,fontWeight:800,color:"#C4C4C4",background:"none",border:"1px solid #E5E7EB",borderRadius:7,padding:"2px 9px",cursor:"pointer",transition:"all 0.14s",lineHeight:1.6 }}
-                  onMouseOver={e=>{e.currentTarget.style.color="#6B7280";e.currentTarget.style.borderColor="#9CA3AF";}}
-                  onMouseOut={e=>{e.currentTarget.style.color="#C4C4C4";e.currentTarget.style.borderColor="#E5E7EB";}}>
-                  ↺ Reset
-                </button>
-              </div>
-            </div>
-            <div style={{ fontSize:30 }}>🏠</div>
+            <h1 style={{ fontSize:21,fontWeight:900,color:"#111",letterSpacing:"-0.03em",lineHeight:1.2 }}>Family Scenario<br />Simulator</h1>
+            <button onClick={()=>{ setB(DEFAULT_B); setSc(DEFAULT_SC_CLEAN); setTab(0); }}
+              style={{ fontSize:12,fontWeight:800,color:"#6B7280",background:"#fff",border:"1.5px solid #E5E7EB",borderRadius:10,padding:"7px 14px",cursor:"pointer",transition:"all 0.15s",boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}
+              onMouseOver={e=>{e.currentTarget.style.borderColor="#9CA3AF";e.currentTarget.style.color="#374151";e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,0.1)";}}
+              onMouseOut={e=>{e.currentTarget.style.borderColor="#E5E7EB";e.currentTarget.style.color="#6B7280";e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,0.06)";}}>
+              ↺ Reset
+            </button>
           </div>
           {/* Tabs */}
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20 }}>
@@ -1453,9 +1740,9 @@ export default function App() {
           </div>
           {/* Card */}
           <div key={tab} className="tab-content" style={{ background:"#fff",borderRadius:22,border:"1.5px solid #ECECEC",padding:"26px 24px 30px",boxShadow:"0 4px 24px rgba(0,0,0,0.07),0 1px 4px rgba(0,0,0,0.04)" }}>
-            {tab===0&&<BaselineTab b={b} setB={setB} />}
+            {tab===0&&<BaselineTab b={b} setB={setB} onSkip={()=>{setSkippedBaseline(true);setTab(1);}} />}
             {tab===1&&<ScenarioTab sc={sc} setSc={setSc} b={b} />}
-            {tab===2&&<ResultsTab  r={r} sc={sc} ready={ready} />}
+            {tab===2&&<ResultsTab  r={r} sc={sc} ready={ready} skipped={skippedBaseline&&!hasIncome} onAddIncome={()=>{setSkippedBaseline(false);setTab(0);}} scenarioReady={scenarioReady} />}
           </div>
           {/* Nav */}
           <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:16 }}>
