@@ -56,8 +56,8 @@ function calcLoanPayment(principal, annualRate, termYears) {
   const r=annualRate/100/12, n=termYears*12;
   return (principal*r*Math.pow(1+r,n))/(Math.pow(1+r,n)-1);
 }
-function calcHomeCost(price, payment, annualTax, annualIns) {
-  return payment + annualTax/12 + annualIns/12 + (price*0.01)/12;
+function calcHomeCost(price, payment, annualTax, annualIns, hoa=0) {
+  return payment + annualTax/12 + annualIns/12 + hoa;
 }
 function solvePriceForRatio(ratio, net, down, rate, term, tax) {
   const target=net*ratio; let lo=5000,hi=8_000_000;
@@ -97,7 +97,8 @@ function calcHome(b, sc) {
   const pmiApplies = downPct < 0.20 && loan > 0;
   const pmiRate    = sc.useDefaultPmi ? 0.0085 : (sc.pmiRate / 100);
   const pmiMonthly = pmiApplies ? (loan * pmiRate) / 12 : 0;
-  const newHousing = calcHomeCost(sc.homePrice, mortgage, sc.annualTax, insurance) + pmiMonthly;
+  const hoaMonthly = sc.hoaMonthly || 0;
+  const newHousing = calcHomeCost(sc.homePrice, mortgage, sc.annualTax, insurance, hoaMonthly) + pmiMonthly;
   const cashNeeded = sc.downPayment + closing;
   const remainingSavings = b.savings - cashNeeded;
   const newTotal   = baselineTotal - baselineHousing + newHousing;
@@ -112,7 +113,7 @@ function calcHome(b, sc) {
     type:"home", netIncome, taxResult, baselineTotal, baselineSurplus,
     scenarioCost:newHousing, newTotal, newSurplus, deltaSurplus,
     ratio:housingRatio, cashNeeded, remainingSavings, runway, risk,
-    mortgage, insurance, closing, comfortPrice, stretchPrice, pmiMonthly, pmiApplies,
+    mortgage, insurance, closing, comfortPrice, stretchPrice, pmiMonthly, pmiApplies, hoaMonthly,
     label:"New Housing Cost", prevLabel:`was ${fmt(baselineHousing)}/mo`,
   };
 }
@@ -886,6 +887,9 @@ function ScenarioHome({ sc, setSc }) {
           </Field>
         );
       })()}
+      <Field label="HOA / Condo Fees (optional)">
+        <Num value={sc.hoaMonthly||""} onChange={set("hoaMonthly")} prefix="$" suffix="/mo" accentColor={ac} />
+      </Field>
     </div>
   );
 }
@@ -1085,7 +1089,7 @@ function SkippedResults({ r, sc, onAddIncome }) {
     if(sc.annualTax) lines.push(["Property Tax",           sc.annualTax/12]);
     const ins = sc.useDefaultIns ? sc.homePrice*0.0035 : sc.annualInsurance;
     if(ins)          lines.push(["Homeowners Insurance",   ins/12]);
-                     lines.push(["HOA / Maintenance (est)",  (sc.homePrice*0.01)/12]);
+    if(sc.hoaMonthly) lines.push(["HOA / Condo Fees", sc.hoaMonthly]);
     if(r.pmiApplies) lines.push(["PMI",                    r.pmiMonthly]);
   } else if(sc.type === "car") {
     lines.push(["Monthly Payment", r.scenarioCost]);
@@ -1416,7 +1420,7 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady }) {
             ["Mortgage (P&I)", r.mortgage],
             ["Property Tax", sc.annualTax/12],
             ["Homeowners Insurance", (sc.useDefaultIns ? sc.homePrice*0.0035 : sc.annualInsurance)/12],
-            ["HOA / Maintenance", (sc.homePrice*0.01)/12],
+            ...(r.hoaMonthly > 0 ? [["HOA / Condo Fees", r.hoaMonthly]] : []),
             ...(r.pmiApplies ? [["PMI", r.pmiMonthly, "#D97706"]] : []),
           ].map(([label, val, color="#4B5563"])=>(
             <div key={label} style={{ display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8 }}>
@@ -1655,7 +1659,7 @@ const DEFAULT_SC_CLEAN = {
   type:"home",
   // home
   homePrice:0, downPayment:0, downPaymentPct:0, interestRate:6.8, loanTerm:30, annualTax:0,
-  annualInsurance:0, useDefaultIns:true, closingCosts:0, useDefaultClose:true, pmiRate:0.85, useDefaultPmi:true,
+  annualInsurance:0, useDefaultIns:true, closingCosts:0, useDefaultClose:true, pmiRate:0.85, useDefaultPmi:true, hoaMonthly:0,
   // car
   carMode:"buy", msrp:0, carDownPayment:0, tradeIn:0, carRate:6.9, carTerm:5,
   useKnownPayment:false, knownPayment:0, insuranceDelta:0,
