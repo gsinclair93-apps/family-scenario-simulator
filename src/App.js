@@ -77,9 +77,14 @@ function getBaselineExpenses(b) {
 }
 
 function getBaselineIncome(b) {
-  return b.incomeMode==="gross"
+  const primary = b.incomeMode==="gross"
     ? calcNetMonthly(b.annualGross, b.filingStatus, b.state)
     : { net:b.netIncome, effectiveRate:0, breakdown:{federal:0,fica:0,state:0} };
+  if(!b.showPartnerIncome) return primary;
+  const partnerNet = b.partnerIncomeMode==="gross"
+    ? calcNetMonthly(b.partnerAnnualGross, "single", b.state).net
+    : b.partnerNetIncome;
+  return { ...primary, net: primary.net + partnerNet, partnerNet };
 }
 
 // ── HOME scenario ──
@@ -645,6 +650,38 @@ function BaselineTab({ b, setB }) {
           <Num value={b.netIncome} onChange={set("netIncome")} prefix="$" suffix="/mo" accentColor={ac} />
         )}
       </Field>
+
+      {/* ── Partner / additional income ── */}
+      {!b.showPartnerIncome ? (
+        <div style={{ textAlign:"center", marginTop:-8, marginBottom:18 }}>
+          <button onClick={()=>setB(p=>({...p,showPartnerIncome:true}))}
+            style={{ background:"none",border:"none",fontSize:12.5,fontWeight:800,color:ac,cursor:"pointer",textDecoration:"underline",textUnderlineOffset:3,padding:4 }}>
+            + Add another income
+          </button>
+        </div>
+      ) : (
+        <Field label="Additional Income">
+          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8 }}>
+            <Pill value={b.partnerIncomeMode} onChange={set("partnerIncomeMode")} accentColor={ac}
+              options={[{value:"gross",label:"Annual Gross"},{value:"net",label:"Monthly Take-home"}]} />
+            <button onClick={()=>setB(p=>({...p,showPartnerIncome:false,partnerAnnualGross:0,partnerNetIncome:0}))}
+              style={{ background:"none",border:"none",fontSize:11,fontWeight:700,color:"#9CA3AF",cursor:"pointer" }}>Remove</button>
+          </div>
+          {b.partnerIncomeMode==="gross"
+            ? <Num value={b.partnerAnnualGross} onChange={set("partnerAnnualGross")} prefix="$" suffix="/yr" accentColor={ac} />
+            : <Num value={b.partnerNetIncome} onChange={set("partnerNetIncome")} prefix="$" suffix="/mo" accentColor={ac} />}
+          {(()=>{
+            const primary = b.incomeMode==="gross" ? calcNetMonthly(b.annualGross,b.filingStatus,b.state).net : b.netIncome;
+            const partner = b.partnerIncomeMode==="gross" ? calcNetMonthly(b.partnerAnnualGross,"single",b.state).net : b.partnerNetIncome;
+            const combined = primary + partner;
+            if(!combined) return null;
+            return <div style={{ marginTop:10,padding:"12px 14px",background:THEME.baseline.light,border:`1.5px solid ${THEME.baseline.border}`,borderRadius:12,display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+              <span style={{ fontSize:12,fontWeight:800,color:THEME.baseline.dim }}>Combined take-home</span>
+              <span style={{ fontSize:17,fontWeight:900,color:ac,fontFamily:"monospace" }}>{fmt(combined)}/mo</span>
+            </div>;
+          })()}
+        </Field>
+      )}
 
       <Field label="Cash Savings" hint="liquid only">
         <Num value={b.savings} onChange={set("savings")} prefix="$" accentColor={ac} />
@@ -1656,6 +1693,7 @@ function LeadCapture({ sc, r }) {
 }
 const DEFAULT_B = {
   incomeMode:"gross", annualGross:0, netIncome:0,
+  showPartnerIncome:false, partnerIncomeMode:"gross", partnerAnnualGross:0, partnerNetIncome:0,
   filingStatus:"married", state:"CT", savings:0,
   expenseMode:"simple",
   currentHousing:0, simpleOther:0, simpleTotal:0,
