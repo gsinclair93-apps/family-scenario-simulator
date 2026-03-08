@@ -590,7 +590,7 @@ function CSVUploader({ b, setB, accentColor }) {
 }
 
 // ─── TAB 1: BASELINE ─────────────────────────────────────────────────────────
-function BaselineTab({ b, setB, onSkip }) {
+function BaselineTab({ b, setB }) {
   const set=k=>v=>setB(p=>({...p,[k]:v}));
   const ac=THEME.baseline.solid;
   const taxResult=b.incomeMode==="gross"&&b.annualGross>0 ? calcNetMonthly(b.annualGross,b.filingStatus,b.state) : null;
@@ -711,11 +711,7 @@ function BaselineTab({ b, setB, onSkip }) {
         </div>
       )}
       <BaselineHealthCheck b={b} />
-      <div style={{ textAlign:"center",marginTop:20 }}>
-        <button onClick={onSkip} style={{ background:"none",border:"none",fontSize:12.5,fontWeight:700,color:"#9CA3AF",cursor:"pointer",textDecoration:"underline",textUnderlineOffset:3,padding:4 }}>
-          Skip for now — just show me the numbers →
-        </button>
-      </div>
+
     </div>
   );
 }
@@ -1672,10 +1668,10 @@ const DEFAULT_SC_CLEAN = {
 };
 
 export default function App() {
-  const [tab,setTab]=useState(0);
+  const [tab,setTabRaw]=useState(0);
+  const setTab = (v) => { const next = typeof v === "function" ? v(tab) : v; setTabRaw(next); window.scrollTo({top:0,behavior:"instant"}); };
   const [b,setB]    =useState(DEFAULT_B);
   const [sc,setSc]  =useState(DEFAULT_SC_CLEAN);
-  const [skippedBaseline,setSkippedBaseline]=useState(false);
   const r=useMemo(()=>runCalcs(b,sc),[b,sc]);
   const hasIncome = b.annualGross > 0 || b.netIncome > 0;
   const scenarioReady = useMemo(()=>isScenarioReady(sc),[sc]);
@@ -1740,9 +1736,9 @@ export default function App() {
           </div>
           {/* Card */}
           <div key={tab} className="tab-content" style={{ background:"#fff",borderRadius:22,border:"1.5px solid #ECECEC",padding:"26px 24px 30px",boxShadow:"0 4px 24px rgba(0,0,0,0.07),0 1px 4px rgba(0,0,0,0.04)" }}>
-            {tab===0&&<BaselineTab b={b} setB={setB} onSkip={()=>{setSkippedBaseline(true);setTab(1);}} />}
+            {tab===0&&<BaselineTab b={b} setB={setB} />}
             {tab===1&&<ScenarioTab sc={sc} setSc={setSc} b={b} />}
-            {tab===2&&<ResultsTab  r={r} sc={sc} ready={ready} skipped={skippedBaseline&&!hasIncome} onAddIncome={()=>{setSkippedBaseline(false);setTab(0);}} scenarioReady={scenarioReady} />}
+            {tab===2&&<ResultsTab  r={r} sc={sc} ready={ready} skipped={!hasIncome} onAddIncome={()=>setTab(0)} scenarioReady={scenarioReady} />}
           </div>
           {/* Nav */}
           <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:16 }}>
