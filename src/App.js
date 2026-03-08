@@ -106,7 +106,9 @@ function calcHome(b, sc) {
   const deltaSurplus = newSurplus - baselineSurplus;
   const housingRatio = netIncome>0 ? newHousing/netIncome : 0;
   const runway = newTotal>0 ? Math.max(0,remainingSavings)/newTotal : 0;
-  const risk = housingRatio<=0.28&&runway>=6&&newSurplus>0?"SAFE":housingRatio>0.35||runway<3||newSurplus<0?"RISKY":"STRETCH";
+  const ratioSafe = housingRatio<=0.28, ratioRisky = housingRatio>0.35;
+  const runwayRisky = runway<3;
+  const risk = newSurplus<0||ratioRisky||runwayRisky?"RISKY":ratioSafe?"SAFE":"STRETCH";
   const comfortPrice = solvePriceForRatio(0.28,netIncome,sc.downPayment,sc.interestRate,sc.loanTerm,sc.annualTax);
   const stretchPrice = solvePriceForRatio(0.35,netIncome,sc.downPayment,sc.interestRate,sc.loanTerm,sc.annualTax);
   return {
@@ -1164,12 +1166,14 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady }) {
     if(sc.type === "home") {
       if(r.risk==="SAFE")    return `At ${fmt(sc.homePrice)}, you'd have ${fmt(r.newSurplus)}/mo left over and ${run} of runway. Looks good.`;
       if(r.risk==="STRETCH") return `At ${fmt(sc.homePrice)}, you'd have ${fmt(r.newSurplus)}/mo left over — tight, but doable with discipline.`;
-      return `At ${fmt(sc.homePrice)}, your expenses would exceed your income by ${surplus}/mo. Consider a lower price.`;
+      if(r.newSurplus < 0)   return `At ${fmt(sc.homePrice)}, your expenses would exceed your income by ${surplus}/mo. Consider a lower price.`;
+      return `At ${fmt(sc.homePrice)}, the monthly payment is manageable but the upfront costs leave you with less than 3 months of emergency runway.`;
     }
     if(sc.type === "car") {
       if(r.risk==="SAFE")    return `This adds ${fmt(r.scenarioCost)}/mo to your budget and leaves ${fmt(r.newSurplus)}/mo surplus. Affordable.`;
       if(r.risk==="STRETCH") return `This adds ${fmt(r.scenarioCost)}/mo and leaves ${fmt(r.newSurplus)}/mo — manageable but watch the runway.`;
-      return `At ${fmt(r.scenarioCost)}/mo, this car strains your budget. You'd be left with ${r.newSurplus<0?"a deficit of "+surplus:surplus+" surplus"}.`;
+      if(r.newSurplus < 0)   return `At ${fmt(r.scenarioCost)}/mo, this car strains your budget — expenses would exceed income by ${surplus}/mo.`;
+      return `At ${fmt(r.scenarioCost)}/mo, the payment is workable but would leave your emergency fund below the 3-month safety threshold.`;
     }
     if(sc.type === "job") {
       const dir = r.salaryDelta >= 0 ? "up" : "down";
