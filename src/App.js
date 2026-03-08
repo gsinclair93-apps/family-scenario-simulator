@@ -1560,7 +1560,7 @@ function LeadCapture({ sc, r }) {
       });
       if(!res.ok) throw new Error("failed");
       setStatus("done");
-      if(typeof gtag !== "undefined") gtag("event", "lead_captured", { scenario: sc.type, risk: r.risk });
+      if(typeof window.gtag !== "undefined") window.gtag("event", "lead_captured", { scenario: sc.type, risk: r.risk });
     } catch {
       setStatus("error");
     }
@@ -1580,7 +1580,7 @@ function LeadCapture({ sc, r }) {
         <div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:20 }}>
           {meta.partners.map((p,i) => (
             <a key={i} href={p.url} target="_blank" rel="noopener noreferrer"
-              onClick={()=>{ if(typeof gtag !== "undefined") gtag("event", "affiliate_click", { partner: p.label, scenario: sc.type }); }}
+              onClick={()=>{ if(typeof window.gtag !== "undefined") window.gtag("event", "affiliate_click", { partner: p.label, scenario: sc.type }); }}
               onMouseEnter={()=>setHovered(i)} onMouseLeave={()=>setHovered(null)}
               style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",
                 background:hovered===i?"#fff":"#fff",
