@@ -1753,9 +1753,9 @@ export default function App() {
         color:"#111" }}>
         <div style={{ maxWidth:520,margin:"0 auto" }}>
           {/* Header */}
-          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:28 }}>
-            <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-start",gap:8 }}>
-              <img src="/logo-icon.png" alt="Can We Afford This?" style={{ width:110,height:110,objectFit:"contain" }} />
+          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:28 }}>
+            <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-start",gap:0 }}>
+              <img src="/logo-icon.png" alt="Can We Afford This?" style={{ width:130,height:130,objectFit:"contain" }} />
               <h1 style={{ fontSize:21,fontWeight:900,color:"#111",letterSpacing:"-0.03em",lineHeight:1.2 }}>Family Scenario<br />Simulator</h1>
             </div>
             <button onClick={()=>{ setB(DEFAULT_B); setSc(DEFAULT_SC_CLEAN); setTab(0); }}
