@@ -695,7 +695,20 @@ function BaselineTab({ b, setB }) {
         })()}
       </Field>
 
-      <Divider label="Monthly Expenses" />
+      <Field label="Do you currently own a home?">
+        <div style={{ display:"flex",gap:10,marginTop:4 }}>
+          {[{val:true,label:"Yes"},{val:false,label:"No"}].map(({val,label})=>(
+            <button key={label} onClick={()=>setB(p=>({...p,ownsHome:val}))}
+              style={{ flex:1,padding:"10px 0",borderRadius:12,border:`1.5px solid ${b.ownsHome===val?ac:"#E5E7EB"}`,
+                background:b.ownsHome===val?ac:"#fff",color:b.ownsHome===val?"#fff":"#6B7280",
+                fontWeight:800,fontSize:13,cursor:"pointer",transition:"all 0.15s" }}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </Field>
+
+
       <div style={{ marginBottom:16 }}>
         <Pill value={b.expenseMode} onChange={set("expenseMode")} accentColor={ac}
           options={[{value:"simple",label:"Simple"},{value:"detailed",label:"Detailed"},{value:"csv",label:"📂 Import CSV"}]} />
@@ -1183,12 +1196,12 @@ function SkippedResults({ r, sc, onAddIncome }) {
       </div>
 
       {/* Affiliate links — always visible */}
-      <LeadCapture sc={sc} r={r} />
+      <LeadCapture sc={sc} r={r} b={b} />
     </div>
   );
 }
 
-function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady }) {
+function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
   const rc=RISK_CFG[r.risk];
   const meta=SCENARIO_META[sc.type];
   const [mounted, setMounted] = useState(false);
@@ -1526,7 +1539,7 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady }) {
 
       </>)}
 
-      {ready && <LeadCapture sc={sc} r={r} />}
+      {ready && <LeadCapture sc={sc} r={r} b={b} />}
 
       {ready && <p style={{ textAlign:"center",fontSize:10.5,color:"#D1D5DB",marginTop:18,lineHeight:1.6 }}>
         Cash-flow analysis — not a loan approval estimate.<br />Consult a financial advisor before major decisions.
@@ -1575,8 +1588,19 @@ const LEAD_META = {
   },
 };
 
-function LeadCapture({ sc, r }) {
+function LeadCapture({ sc, r, b }) {
   const meta = LEAD_META[sc.type] || LEAD_META.home;
+
+  // Smart mortgage link routing based on homeowner status
+  const mortgageUrl = (sc.type === "home" || b?.ownsHome === false)
+    ? "https://www.tkqlhce.com/click-101701917-17168395"   // buying / not a homeowner → va-firsttimebuyer
+    : b?.ownsHome === true
+      ? "https://www.dpbolvw.net/click-101701917-17168360"  // existing homeowner → refi-rates
+      : "https://www.tkqlhce.com/click-101701917-17168395"; // unknown → default to firsttimebuyer
+
+  const partners = partners.map(p =>
+    p.tag === "Mortgage Lender" ? { ...p, url: mortgageUrl } : p
+  );
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("idle"); // idle | submitting | done | error
   const [hovered, setHovered] = useState(null);
@@ -1615,7 +1639,7 @@ function LeadCapture({ sc, r }) {
 
         {/* Partner links */}
         <div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:20 }}>
-          {meta.partners.map((p,i) => (
+          {partners.map((p,i) => (
             <a key={i} href={p.url} target="_blank" rel="noopener noreferrer"
               onClick={()=>{ if(typeof window.gtag !== "undefined") window.gtag("event", "affiliate_click", { partner: p.label, scenario: sc.type }); }}
               onMouseEnter={()=>setHovered(i)} onMouseLeave={()=>setHovered(null)}
@@ -1672,7 +1696,7 @@ function LeadCapture({ sc, r }) {
             We'll let you know when new features drop. In the meantime, check out one of these resources:
           </div>
           <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-            {meta.partners.map((p,i) => (
+            {partners.map((p,i) => (
               <a key={i} href={p.url} target="_blank" rel="noopener noreferrer"
                 style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",
                   background:"#fff",border:"1.5px solid #E5E7EB",borderRadius:12,
@@ -1694,7 +1718,7 @@ function LeadCapture({ sc, r }) {
 const DEFAULT_B = {
   incomeMode:"gross", annualGross:0, netIncome:0,
   showPartnerIncome:false, partnerIncomeMode:"gross", partnerAnnualGross:0, partnerNetIncome:0,
-  filingStatus:"married", state:"CT", savings:0,
+  filingStatus:"married", state:"CT", savings:0, ownsHome:null,
   expenseMode:"simple",
   currentHousing:0, simpleOther:0, simpleTotal:0,
   carPayment:0, otherDebts:0, utilities:0, groceries:0, subscriptions:0, otherLiving:0,
@@ -1789,7 +1813,7 @@ export default function App() {
           <div key={tab} className="tab-content" style={{ background:"#fff",borderRadius:22,border:"1.5px solid #ECECEC",padding:"26px 24px 30px",boxShadow:"0 4px 24px rgba(0,0,0,0.07),0 1px 4px rgba(0,0,0,0.04)" }}>
             {tab===0&&<BaselineTab b={b} setB={setB} />}
             {tab===1&&<ScenarioTab sc={sc} setSc={setSc} b={b} />}
-            {tab===2&&<ResultsTab  r={r} sc={sc} ready={ready} skipped={!hasIncome} onAddIncome={()=>setTab(0)} scenarioReady={scenarioReady} />}
+            {tab===2&&<ResultsTab  r={r} sc={sc} ready={ready} skipped={!hasIncome} onAddIncome={()=>setTab(0)} scenarioReady={scenarioReady} b={b} />}
           </div>
           {/* Nav */}
           <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:16 }}>
