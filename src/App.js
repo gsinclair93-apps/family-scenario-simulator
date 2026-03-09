@@ -1753,10 +1753,10 @@ export default function App() {
         color:"#111" }}>
         <div style={{ maxWidth:520,margin:"0 auto" }}>
           {/* Header */}
-          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:28 }}>
-            <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-start",gap:0 }}>
+          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:28 }}>
+            <div style={{ display:"flex",alignItems:"center",gap:10 }}>
               <img src="/logo-icon.png" alt="Can We Afford This?" style={{ width:130,height:130,objectFit:"contain" }} />
-              <h1 style={{ fontSize:21,fontWeight:900,color:"#111",letterSpacing:"-0.03em",lineHeight:1.2 }}>Family Scenario<br />Simulator</h1>
+              <h1 style={{ fontSize:18,fontWeight:900,color:"#111",letterSpacing:"-0.03em",lineHeight:1.2 }}>Family Scenario<br />Simulator</h1>
             </div>
             <button onClick={()=>{ setB(DEFAULT_B); setSc(DEFAULT_SC_CLEAN); setTab(0); }}
               style={{ fontSize:12,fontWeight:800,color:"#6B7280",background:"#fff",border:"1.5px solid #E5E7EB",borderRadius:10,padding:"7px 14px",cursor:"pointer",transition:"all 0.15s",boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}
