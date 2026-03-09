@@ -1756,7 +1756,7 @@ export default function App() {
           <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:28 }}>
             <h1 style={{ fontSize:21,fontWeight:900,color:"#111",letterSpacing:"-0.03em",lineHeight:1.2 }}>Family Scenario<br />Simulator</h1>
             <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8 }}>
-            <img src="/logo-icon.png" alt="Can We Afford This?" style={{ width:48,height:48,objectFit:"contain" }} />
+            <img src="/logo-icon.png" alt="Can We Afford This?" style={{ width:80,height:80,objectFit:"contain" }} />
             <button onClick={()=>{ setB(DEFAULT_B); setSc(DEFAULT_SC_CLEAN); setTab(0); }}
               style={{ fontSize:12,fontWeight:800,color:"#6B7280",background:"#fff",border:"1.5px solid #E5E7EB",borderRadius:10,padding:"7px 14px",cursor:"pointer",transition:"all 0.15s",boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}
               onMouseOver={e=>{e.currentTarget.style.borderColor="#9CA3AF";e.currentTarget.style.color="#374151";e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,0.1)";}}
