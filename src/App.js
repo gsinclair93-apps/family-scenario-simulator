@@ -695,20 +695,6 @@ function BaselineTab({ b, setB }) {
         })()}
       </Field>
 
-      <Field label="Do you currently own a home?">
-        <div style={{ display:"flex",gap:10,marginTop:4 }}>
-          {[{val:true,label:"Yes"},{val:false,label:"No"}].map(({val,label})=>(
-            <button key={label} onClick={()=>setB(p=>({...p,ownsHome:val}))}
-              style={{ flex:1,padding:"10px 0",borderRadius:12,border:`1.5px solid ${b.ownsHome===val?ac:"#E5E7EB"}`,
-                background:b.ownsHome===val?ac:"#fff",color:b.ownsHome===val?"#fff":"#6B7280",
-                fontWeight:800,fontSize:13,cursor:"pointer",transition:"all 0.15s" }}>
-              {label}
-            </button>
-          ))}
-        </div>
-      </Field>
-
-
       <div style={{ marginBottom:16 }}>
         <Pill value={b.expenseMode} onChange={set("expenseMode")} accentColor={ac}
           options={[{value:"simple",label:"Simple"},{value:"detailed",label:"Detailed"},{value:"csv",label:"📂 Import CSV"}]} />
@@ -866,7 +852,7 @@ function BaselineHealthCheck({ b }) {
     </div>
   );
 }
-function ScenarioHome({ sc, setSc }) {
+function ScenarioHome({ sc, setSc, b, setB }) {
   const set=k=>v=>setSc(p=>({...p,[k]:v})); const ac=SCENARIO_META.home.color;
 
   // Synced down payment handlers
@@ -941,6 +927,18 @@ function ScenarioHome({ sc, setSc }) {
       })()}
       <Field label="HOA / Condo Fees (optional)">
         <Num value={sc.hoaMonthly||""} onChange={set("hoaMonthly")} prefix="$" suffix="/mo" accentColor={ac} />
+      </Field>
+      <Field label="Do you currently own a home?">
+        <div style={{ display:"flex",gap:10,marginTop:4 }}>
+          {[{val:true,label:"Yes"},{val:false,label:"No"}].map(({val,label})=>(
+            <button key={label} onClick={()=>setB(p=>({...p,ownsHome:val}))}
+              style={{ flex:1,padding:"10px 0",borderRadius:12,border:`1.5px solid ${b?.ownsHome===val?ac:"#E5E7EB"}`,
+                background:b?.ownsHome===val?ac:"#fff",color:b?.ownsHome===val?"#fff":"#6B7280",
+                fontWeight:800,fontSize:13,cursor:"pointer",transition:"all 0.15s" }}>
+              {label}
+            </button>
+          ))}
+        </div>
       </Field>
     </div>
   );
@@ -1062,7 +1060,7 @@ function ScenarioApt({ sc, setSc }) {
   );
 }
 
-function ScenarioTab({ sc, setSc, b }) {
+function ScenarioTab({ sc, setSc, b, setB }) {
   const set=k=>v=>setSc(p=>({...p,[k]:v}));
   const [hovered, setHovered] = useState(null);
   const scenarios=[
@@ -1102,7 +1100,7 @@ function ScenarioTab({ sc, setSc, b }) {
           })}
         </div>
       </div>
-      {sc.type==="home"&&<ScenarioHome sc={sc} setSc={setSc} />}
+      {sc.type==="home"&&<ScenarioHome sc={sc} setSc={setSc} b={b} setB={setB} />}
       {sc.type==="car" &&<ScenarioCar  sc={sc} setSc={setSc} />}
       {sc.type==="job" &&<ScenarioJob  sc={sc} setSc={setSc} b={b} />}
       {sc.type==="apt" &&<ScenarioApt  sc={sc} setSc={setSc} />}
@@ -1591,15 +1589,15 @@ const LEAD_META = {
 function LeadCapture({ sc, r, b }) {
   const meta = LEAD_META[sc.type] || LEAD_META.home;
 
-  // Smart mortgage link routing based on homeowner status
-  const mortgageUrl = (sc.type === "home" || b?.ownsHome === false)
-    ? "https://www.tkqlhce.com/click-101701917-17168395"   // buying / not a homeowner → va-firsttimebuyer
-    : b?.ownsHome === true
-      ? "https://www.dpbolvw.net/click-101701917-17168360"  // existing homeowner → refi-rates
-      : "https://www.tkqlhce.com/click-101701917-17168395"; // unknown → default to firsttimebuyer
+  // Smart mortgage link routing — only applies to home purchase scenario
+  const mortgageUrl = sc.type === "home"
+    ? b?.ownsHome === true
+      ? "https://www.dpbolvw.net/click-101701917-17168360"   // existing homeowner → refi-rates
+      : "https://www.tkqlhce.com/click-101701917-17168395"   // first-time buyer (no or skipped)
+    : null;
 
   const partners = meta.partners.map(p =>
-    p.tag === "Mortgage Lender" ? { ...p, url: mortgageUrl } : p
+    (mortgageUrl && p.tag === "Mortgage Lender") ? { ...p, url: mortgageUrl } : p
   );
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("idle"); // idle | submitting | done | error
@@ -1812,7 +1810,7 @@ export default function App() {
           {/* Card */}
           <div key={tab} className="tab-content" style={{ background:"#fff",borderRadius:22,border:"1.5px solid #ECECEC",padding:"26px 24px 30px",boxShadow:"0 4px 24px rgba(0,0,0,0.07),0 1px 4px rgba(0,0,0,0.04)" }}>
             {tab===0&&<BaselineTab b={b} setB={setB} />}
-            {tab===1&&<ScenarioTab sc={sc} setSc={setSc} b={b} />}
+            {tab===1&&<ScenarioTab sc={sc} setSc={setSc} b={b} setB={setB} />}
             {tab===2&&<ResultsTab  r={r} sc={sc} ready={ready} skipped={!hasIncome} onAddIncome={()=>setTab(0)} scenarioReady={scenarioReady} b={b} />}
           </div>
           {/* Nav */}
