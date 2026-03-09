@@ -1598,7 +1598,7 @@ function LeadCapture({ sc, r, b }) {
       ? "https://www.dpbolvw.net/click-101701917-17168360"  // existing homeowner → refi-rates
       : "https://www.tkqlhce.com/click-101701917-17168395"; // unknown → default to firsttimebuyer
 
-  const partners = partners.map(p =>
+  const partners = meta.partners.map(p =>
     p.tag === "Mortgage Lender" ? { ...p, url: mortgageUrl } : p
   );
   const [email, setEmail] = useState("");
