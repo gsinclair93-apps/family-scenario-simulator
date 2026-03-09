@@ -1131,7 +1131,7 @@ function StressBar({ ratio, passThreshold, warnThreshold, pass, warn }) {
 }
 
 // ─── SKIPPED BASELINE RESULTS ────────────────────────────────────────────────
-function SkippedResults({ r, sc, onAddIncome }) {
+function SkippedResults({ r, sc, onAddIncome, b }) {
   const meta = SCENARIO_META[sc.type];
 
   // Build a simple payment breakdown based on scenario type
@@ -1297,7 +1297,7 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
 
       {/* Skipped baseline — show payment breakdown + income nudge */}
       {!ready && scenarioReady && skipped && (
-        <SkippedResults r={r} sc={sc} onAddIncome={onAddIncome} />
+        <SkippedResults r={r} sc={sc} onAddIncome={onAddIncome} b={b} />
       )}
 
       {/* All results — only shown when ready */}
