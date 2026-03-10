@@ -237,30 +237,67 @@ function calcApartment(b, sc) {
   };
 }
 
+// ── DAYCARE scenario ──
+function calcDaycare(b, sc) {
+  const taxResult = getBaselineIncome(b);
+  const netIncome = taxResult.net;
+  const { total:baselineTotal } = getBaselineExpenses(b);
+  const baselineSurplus = netIncome - baselineTotal;
+
+  const numChildren   = sc.daycareChildren || 1;
+  const costPerChild  = sc.daycareCostPerChild || 0;
+  const fsaBenefit    = (sc.daycareFSA || 0) / 12; // annual FSA → monthly
+  const lostIncome    = sc.daycareLostIncome || 0;  // monthly lost income
+
+  const grossDaycareCost = costPerChild * numChildren;
+  const netDaycareCost   = Math.max(0, grossDaycareCost - fsaBenefit);
+  const newTotal         = baselineTotal + netDaycareCost;
+  const newNet           = netIncome - lostIncome;
+  const newSurplus       = newNet - newTotal;
+  const deltaSurplus     = newSurplus - baselineSurplus;
+  const runway           = newTotal > 0 ? Math.max(0, b.savings) / newTotal : 0;
+  const risk             = newSurplus < 0 || runway < 3 ? "RISKY" : newSurplus > 500 && runway >= 6 ? "SAFE" : "STRETCH";
+
+  // Break-even: is it worth both parents working?
+  const worthWorking = lostIncome > 0 ? lostIncome > netDaycareCost : null;
+
+  return {
+    type:"daycare", netIncome:newNet, taxResult, baselineTotal, baselineSurplus,
+    scenarioCost:netDaycareCost, newTotal, newSurplus, deltaSurplus,
+    grossDaycareCost, netDaycareCost, fsaBenefit, lostIncome, worthWorking,
+    runway, risk, ratio: newTotal > 0 ? netDaycareCost / newNet : 0,
+    cashNeeded:0, remainingSavings:b.savings,
+    label:"Monthly Daycare Cost", prevLabel:`${numChildren} child${numChildren>1?"ren":""}`,
+  };
+}
+
 function isReady(b, sc) {
   const hasIncome = b.annualGross > 0 || b.netIncome > 0;
-  if(sc.type === "home") return hasIncome && sc.homePrice > 0;
-  if(sc.type === "car")  return sc.carMode === "lease" ? sc.leaseMonthly > 0 : (sc.useKnownPayment ? sc.knownPayment > 0 : sc.msrp > 0);
-  if(sc.type === "job")  return sc.newAnnualSalary > 0;
-  if(sc.type === "apt")  return hasIncome && sc.newRent > 0;
+  if(sc.type === "home")    return hasIncome && sc.homePrice > 0;
+  if(sc.type === "car")     return sc.carMode === "lease" ? sc.leaseMonthly > 0 : (sc.useKnownPayment ? sc.knownPayment > 0 : sc.msrp > 0);
+  if(sc.type === "job")     return sc.newAnnualSalary > 0;
+  if(sc.type === "apt")     return hasIncome && sc.newRent > 0;
+  if(sc.type === "daycare") return hasIncome && (sc.daycareCostPerChild > 0);
   return false;
 }
 
 // Scenario-only ready check (no income required)
 function isScenarioReady(sc) {
-  if(sc.type === "home") return sc.homePrice > 0;
-  if(sc.type === "car")  return sc.carMode === "lease" ? sc.leaseMonthly > 0 : (sc.useKnownPayment ? sc.knownPayment > 0 : sc.msrp > 0);
-  if(sc.type === "job")  return sc.newAnnualSalary > 0;
-  if(sc.type === "apt")  return sc.newRent > 0;
+  if(sc.type === "home")    return sc.homePrice > 0;
+  if(sc.type === "car")     return sc.carMode === "lease" ? sc.leaseMonthly > 0 : (sc.useKnownPayment ? sc.knownPayment > 0 : sc.msrp > 0);
+  if(sc.type === "job")     return sc.newAnnualSalary > 0;
+  if(sc.type === "apt")     return sc.newRent > 0;
+  if(sc.type === "daycare") return sc.daycareCostPerChild > 0;
   return false;
 }
 
 function runCalcs(b, sc) {
   try {
-    if(sc.type==="home") return calcHome(b,sc);
-    if(sc.type==="car")  return calcCar(b,sc);
-    if(sc.type==="job")  return calcJob(b,sc);
-    if(sc.type==="apt")  return calcApartment(b,sc);
+    if(sc.type==="home")    return calcHome(b,sc);
+    if(sc.type==="car")     return calcCar(b,sc);
+    if(sc.type==="job")     return calcJob(b,sc);
+    if(sc.type==="apt")     return calcApartment(b,sc);
+    if(sc.type==="daycare") return calcDaycare(b,sc);
   } catch(e) { /* fall through to default */ }
   return calcHome(b,sc);
 }
@@ -366,10 +403,11 @@ const RISK_CFG = {
   RISKY:  { label:"Risky",   color:"#991b1b", bg:"#fee2e2", border:"#fca5a5", icon:"◆" },
 };
 const SCENARIO_META = {
-  home:{ emoji:"🏡", label:"Buy a Home",      color:"#4338CA" },
-  car: { emoji:"🚗", label:"Buy / Lease a Car",color:"#0891B2" },
-  job: { emoji:"💼", label:"New Job",          color:"#7C3AED" },
-  apt: { emoji:"🏢", label:"New Apartment",    color:"#0F766E" },
+  home:    { emoji:"🏡", label:"Buy a Home",       color:"#4338CA" },
+  car:     { emoji:"🚗", label:"Buy / Lease a Car", color:"#0891B2" },
+  job:     { emoji:"💼", label:"New Job",           color:"#7C3AED" },
+  apt:     { emoji:"🏢", label:"New Apartment",     color:"#0F766E" },
+  daycare: { emoji:"👶", label:"Daycare",           color:"#DB2777" },
 };
 
 // ─── SHARED UI ────────────────────────────────────────────────────────────────
@@ -1060,14 +1098,41 @@ function ScenarioApt({ sc, setSc }) {
   );
 }
 
+function ScenarioDaycare({ sc, setSc }) {
+  const set=k=>v=>setSc(p=>({...p,[k]:v})); const ac=SCENARIO_META.daycare.color;
+  return (
+    <div>
+      <Divider label="Daycare Costs" />
+      <TwoCol>
+        <Field label="Number of Children">
+          <Num value={sc.daycareChildren} onChange={set("daycareChildren")} accentColor={ac} />
+        </Field>
+        <Field label="Cost Per Child">
+          <Num value={sc.daycareCostPerChild} onChange={set("daycareCostPerChild")} prefix="$" suffix="/mo" accentColor={ac} />
+        </Field>
+      </TwoCol>
+      <Field label="Dependent Care FSA" optional hint="annual benefit">
+        <Num value={sc.daycareFSA} onChange={set("daycareFSA")} prefix="$" suffix="/yr" accentColor={ac} />
+      </Field>
+      <InfoBox text="FSA benefit is divided across 12 months to reduce your net monthly daycare cost." color={ac} bg="#FDF2F8" border="#FBCFE8" />
+      <Divider label="Lost Income (if one parent stops working)" />
+      <Field label="Monthly Lost Income" optional hint="after-tax">
+        <Num value={sc.daycareLostIncome} onChange={set("daycareLostIncome")} prefix="$" suffix="/mo" accentColor={ac} />
+      </Field>
+      <InfoBox text="Enter the take-home pay of the parent who would stop working. We'll show whether it's financially worth both of you working." color={ac} bg="#FDF2F8" border="#FBCFE8" />
+    </div>
+  );
+}
+
 function ScenarioTab({ sc, setSc, b, setB }) {
   const set=k=>v=>setSc(p=>({...p,[k]:v}));
   const [hovered, setHovered] = useState(null);
   const scenarios=[
-    { id:"home",...SCENARIO_META.home, time:"~3 min" },
-    { id:"car", ...SCENARIO_META.car,  time:"~2 min" },
-    { id:"job", ...SCENARIO_META.job,  time:"~2 min" },
-    { id:"apt", ...SCENARIO_META.apt,  time:"~1 min" },
+    { id:"home",    ...SCENARIO_META.home,    time:"~3 min" },
+    { id:"car",     ...SCENARIO_META.car,     time:"~2 min" },
+    { id:"job",     ...SCENARIO_META.job,     time:"~2 min" },
+    { id:"apt",     ...SCENARIO_META.apt,     time:"~1 min" },
+    { id:"daycare", ...SCENARIO_META.daycare, time:"~2 min" },
   ];
   return (
     <div>
@@ -1100,10 +1165,11 @@ function ScenarioTab({ sc, setSc, b, setB }) {
           })}
         </div>
       </div>
-      {sc.type==="home"&&<ScenarioHome sc={sc} setSc={setSc} b={b} setB={setB} />}
-      {sc.type==="car" &&<ScenarioCar  sc={sc} setSc={setSc} />}
-      {sc.type==="job" &&<ScenarioJob  sc={sc} setSc={setSc} b={b} />}
-      {sc.type==="apt" &&<ScenarioApt  sc={sc} setSc={setSc} />}
+      {sc.type==="home"   &&<ScenarioHome    sc={sc} setSc={setSc} b={b} setB={setB} />}
+      {sc.type==="car"    &&<ScenarioCar     sc={sc} setSc={setSc} />}
+      {sc.type==="job"    &&<ScenarioJob     sc={sc} setSc={setSc} b={b} />}
+      {sc.type==="apt"    &&<ScenarioApt     sc={sc} setSc={setSc} />}
+      {sc.type==="daycare"&&<ScenarioDaycare sc={sc} setSc={setSc} />}
     </div>
   );
 }
@@ -1232,6 +1298,12 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
       if(r.risk==="STRETCH") return `At ${fmt(sc.newRent)}/mo, you'd have ${fmt(r.newSurplus)}/mo left — workable but snug.`;
       return `At ${fmt(sc.newRent)}/mo, rent would exceed your comfortable range and leave a tight margin.`;
     }
+    if(sc.type === "daycare") {
+      if(r.risk==="SAFE")    return `Net daycare cost of ${fmt(r.netDaycareCost)}/mo leaves you with ${fmt(r.newSurplus)}/mo surplus. Manageable.`;
+      if(r.risk==="STRETCH") return `At ${fmt(r.netDaycareCost)}/mo net, daycare is a real stretch — you'd have ${fmt(r.newSurplus)}/mo left.`;
+      if(r.newSurplus < 0)   return `At ${fmt(r.netDaycareCost)}/mo net, daycare costs would put you in the red by ${fmt(Math.abs(r.newSurplus))}/mo.`;
+      return `Daycare costs are manageable but would leave your emergency runway below the 3-month threshold.`;
+    }
     return "";
   })();
 
@@ -1315,6 +1387,35 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
         </div>
       </div>
 
+      {/* ── SHARE BUTTON ── */}
+      {(()=>{
+        const [shared, setShared] = useState(false);
+        const scenarioLabel = r.type==="home" ? "Can We Afford This House?" : r.type==="car" ? "Can We Afford This Car?" : r.type==="job" ? "Can We Afford This Job Change?" : r.type==="apt" ? "Can We Afford This Apartment?" : r.type==="daycare" ? "Can We Afford Daycare?" : "Can We Afford This?";
+        const shareText = `🏠 ${scenarioLabel}\n\nVerdict: ${rc.label}\nMonthly breathing room: ${fmt(r.newSurplus)}\nHousing ratio: ${pct(r.ratio)}\nEmergency runway: ${r.runway?.toFixed(1)} months\n\nRun your own scenario:\ncanweaffordthis.com`;
+        const handleShare = () => {
+          if(navigator.share) {
+            navigator.share({ title: scenarioLabel, text: shareText })
+              .then(()=>{ setShared(true); setTimeout(()=>setShared(false), 3000); })
+              .catch(()=>{}); // user dismissed share sheet — do nothing
+          } else {
+            navigator.clipboard.writeText(shareText).then(()=>{
+              setShared(true);
+              setTimeout(()=>setShared(false), 3000);
+            });
+          }
+        };
+        return (
+          <button onClick={handleShare} style={{
+            width:"100%",padding:"12px 0",borderRadius:14,border:"1.5px solid #E5E7EB",
+            background:shared?"#ECFDF5":"#fff",color:shared?"#059669":"#6B7280",
+            fontSize:13,fontWeight:800,cursor:"pointer",transition:"all 0.2s",marginBottom:14,
+            boxShadow:"0 1px 4px rgba(0,0,0,0.06)"
+          }}>
+            {shared ? "✔ Results copied. Send this to your partner." : "📤 Share Results"}
+          </button>
+        );
+      })()}
+
       {/* Job-specific callout */}
       {r.type==="job"&&(
         <div style={{ background:"#F5F3FF",border:"1.5px solid #C4B5FD",borderRadius:14,padding:"18px 20px",marginBottom:14,
@@ -1335,6 +1436,37 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Daycare-specific callout */}
+      {r.type==="daycare"&&(
+        <div style={{ background:"#FDF2F8",border:"1.5px solid #FBCFE8",borderRadius:14,padding:"18px 20px",marginBottom:14,
+          opacity:mounted?1:0,transform:mounted?"none":"translateY(8px)",transition:"all 0.4s ease 0.1s" }}>
+          <div style={{ fontSize:10,fontWeight:800,color:"#DB2777",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:14 }}>Daycare Summary</div>
+          <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+            {[
+              ["Gross daycare cost",    fmt(r.grossDaycareCost)+"/mo"],
+              r.fsaBenefit>0&&["FSA savings",           "-"+fmt(r.fsaBenefit)+"/mo"],
+              ["Net daycare cost",      fmt(r.netDaycareCost)+"/mo"],
+              r.lostIncome>0&&["Lost income",           "-"+fmt(r.lostIncome)+"/mo"],
+            ].filter(Boolean).map(([l,v])=>(
+              <div key={l} style={{ display:"flex",justifyContent:"space-between",alignItems:"baseline" }}>
+                <span style={{ fontSize:13,color:"#4B5563",fontWeight:600 }}>{l}</span>
+                <span style={{ fontSize:14,fontWeight:800,fontFamily:"monospace",color:"#DB2777" }}>{v}</span>
+              </div>
+            ))}
+          </div>
+          {r.worthWorking!==null&&(
+            <div style={{ marginTop:14,paddingTop:12,borderTop:"1px solid #FBCFE8" }}>
+              <div style={{ fontSize:12,fontWeight:800,color:"#DB2777",marginBottom:4 }}>Is it worth both of you working?</div>
+              <div style={{ fontSize:13,color:"#4B5563",fontWeight:600,lineHeight:1.5 }}>
+                {r.worthWorking
+                  ? `✓ Yes — you net ${fmt(r.lostIncome - r.netDaycareCost)}/mo more by both working after daycare costs.`
+                  : `✗ No — daycare costs (${fmt(r.netDaycareCost)}/mo) exceed the lost income (${fmt(r.lostIncome)}/mo). One parent staying home saves ${fmt(r.netDaycareCost - r.lostIncome)}/mo.`}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1584,6 +1716,15 @@ const LEAD_META = {
       { label:"Talk to a financial advisor", icon:"📊", url:"https://www.nerdwallet.com/advisors", tag:"Financial Advisor" },
     ],
   },
+  daycare: {
+    headline: "Planning for childcare costs?",
+    sub: "Resources to help you navigate this stage of family finances.",
+    partners: [
+      { label:"Find daycare near you", icon:"👶", url:"https://www.care.com/child-care", tag:"Childcare Search" },
+      { label:"Open a dependent care FSA", icon:"💰", url:"https://www.nerdwallet.com/article/taxes/dependent-care-fsa", tag:"Tax Savings" },
+      { label:"Talk to a financial advisor", icon:"📊", url:"https://www.nerdwallet.com/advisors", tag:"Financial Advisor" },
+    ],
+  },
 };
 
 function LeadCapture({ sc, r, b }) {
@@ -1735,6 +1876,8 @@ const DEFAULT_SC_CLEAN = {
   oldCommuteCost:0, newCommuteCost:0, benefitsCost:0,
   // apt
   newRent:0, securityDeposit:0, moveCosts:0,
+  // daycare
+  daycareChildren:1, daycareCostPerChild:0, daycareFSA:0, daycareLostIncome:0,
 };
 
 export default function App() {
@@ -1787,11 +1930,15 @@ export default function App() {
               ↺ Reset
             </button>
           </div>
+          {/* Intro */}
+          <p style={{ fontSize:12,color:"#9CA3AF",fontWeight:600,textAlign:"center",marginBottom:16,marginTop:-8,letterSpacing:"0.01em" }}>
+            Simulate how major life decisions impact your real monthly finances.
+          </p>
           {/* Tabs */}
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20 }}>
             {TABS.map((key,i)=>{
               const t=THEME[key],active=tab===i;
-              const hasDot = (i===0&&(b.annualGross>0||b.netIncome>0))||(i===1&&sc.homePrice+sc.msrp+sc.newAnnualSalary+sc.newRent>0)||(i===2);
+              const hasDot = (i===0&&(b.annualGross>0||b.netIncome>0))||(i===1&&sc.homePrice+sc.msrp+sc.newAnnualSalary+sc.newRent+(sc.daycareCostPerChild||0)>0)||(i===2);
               return (
                 <button key={key} onClick={()=>setTab(i)} style={{
                   aspectRatio:"1/1",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:7,
