@@ -2120,12 +2120,18 @@ export default function App() {
               <img src="/logo-icon.png" alt="Can We Afford This?" style={{ width:130,height:130,objectFit:"contain" }} />
               <h1 style={{ fontSize:18,fontWeight:900,color:"#111",letterSpacing:"-0.03em",lineHeight:1.2 }}>Family Scenario<br />Simulator</h1>
             </div>
-            <button onClick={()=>{ setB(DEFAULT_B); setSc(DEFAULT_SC_CLEAN); setTab(0); }}
-              style={{ fontSize:12,fontWeight:800,color:"#6B7280",background:"#fff",border:"1.5px solid #E5E7EB",borderRadius:10,padding:"7px 14px",cursor:"pointer",transition:"all 0.15s",boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}
-              onMouseOver={e=>{e.currentTarget.style.borderColor="#9CA3AF";e.currentTarget.style.color="#374151";e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,0.1)";}}
-              onMouseOut={e=>{e.currentTarget.style.borderColor="#E5E7EB";e.currentTarget.style.color="#6B7280";e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,0.06)";}}>
-              ↺ Reset
-            </button>
+            <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+              <a href="https://blog.canweaffordthis.com" target="_blank" rel="noopener noreferrer"
+                style={{ fontSize:12,fontWeight:800,color:"#6B7280",background:"#fff",border:"1.5px solid #E5E7EB",borderRadius:10,padding:"7px 14px",cursor:"pointer",transition:"all 0.15s",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",textDecoration:"none" }}>
+                📝 Blog
+              </a>
+              <button onClick={()=>{ setB(DEFAULT_B); setSc(DEFAULT_SC_CLEAN); setTab(0); }}
+                style={{ fontSize:12,fontWeight:800,color:"#6B7280",background:"#fff",border:"1.5px solid #E5E7EB",borderRadius:10,padding:"7px 14px",cursor:"pointer",transition:"all 0.15s",boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}
+                onMouseOver={e=>{e.currentTarget.style.borderColor="#9CA3AF";e.currentTarget.style.color="#374151";e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,0.1)";}}
+                onMouseOut={e=>{e.currentTarget.style.borderColor="#E5E7EB";e.currentTarget.style.color="#6B7280";e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,0.06)";}}>
+                ↺ Reset
+              </button>
+            </div>
           </div>
           {/* Intro */}
           <p style={{ fontSize:12,color:"#9CA3AF",fontWeight:600,textAlign:"center",marginBottom:16,marginTop:-8,letterSpacing:"0.01em" }}>

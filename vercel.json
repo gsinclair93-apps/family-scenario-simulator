@@ -1,0 +1,14 @@
+{
+  "redirects": [
+    {
+      "source": "/blog",
+      "destination": "https://blog.canweaffordthis.com",
+      "permanent": false
+    },
+    {
+      "source": "/blog/:path*",
+      "destination": "https://blog.canweaffordthis.com/:path*",
+      "permanent": false
+    }
+  ]
+}
