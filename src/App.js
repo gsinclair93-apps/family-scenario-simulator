@@ -288,29 +288,34 @@ function calcSavings(b, sc) {
   const requiredMonthly = targetMonths > 0 ? remaining / targetMonths : null;
   const feasible = requiredMonthly !== null ? requiredMonthly <= monthlySurplus : null;
 
-  // Timeline options
-  const timelines = remaining > 0 ? [
-    { label:"Aggressive", months: Math.ceil(remaining / (monthlySurplus * 0.8 || 1)), pct:0.8 },
-    { label:"Moderate",   months: Math.ceil(remaining / (monthlySurplus * 0.5 || 1)), pct:0.5 },
-    { label:"Relaxed",    months: Math.ceil(remaining / (monthlySurplus * 0.3 || 1)), pct:0.3 },
-  ].map(t => ({
-    ...t,
-    monthly: monthlySurplus * t.pct,
-    feasible: monthlySurplus > 0,
-  })) : [];
+  // Risk logic — no baseline = UNKNOWN; use moderate pace (50%) for no-target verdict
+  const hasIncome = netIncome > 0 || baselineTotal > 0;
+  const noBaseline = !hasIncome;
+
+  const moderateMonths = monthlySurplus > 0 ? Math.ceil(remaining / (monthlySurplus * 0.5)) : null;
+
+  // Timeline options — only when surplus > 0
+  const timelines = remaining > 0 && monthlySurplus > 0 ? [
+    { label:"Aggressive", months: Math.ceil(remaining / (monthlySurplus * 0.8)), pct:0.8 },
+    { label:"Moderate",   months: Math.ceil(remaining / (monthlySurplus * 0.5)), pct:0.5 },
+    { label:"Relaxed",    months: Math.ceil(remaining / (monthlySurplus * 0.3)), pct:0.3 },
+  ].map(t => ({ ...t, monthly: monthlySurplus * t.pct })) : [];
 
   // At-current-surplus timeline
   const atSurplusMonths = monthlySurplus > 0 ? Math.ceil(remaining / monthlySurplus) : null;
 
-  const risk = !requiredMonthly ? "SAFE"
-    : requiredMonthly <= monthlySurplus * 0.5 ? "SAFE"
-    : requiredMonthly <= monthlySurplus ? "STRETCH"
-    : "RISKY";
+  const risk = noBaseline ? "UNKNOWN"
+    : targetMonths > 0 && requiredMonthly !== null
+      ? (requiredMonthly <= monthlySurplus * 0.5 ? "SAFE" : requiredMonthly <= monthlySurplus ? "STRETCH" : "RISKY")
+      : moderateMonths === null ? "RISKY"
+      : moderateMonths <= 36 ? "SAFE"
+      : moderateMonths <= 60 ? "STRETCH"
+      : "RISKY";
 
   return {
     type:"savings", netIncome, taxResult, baselineTotal, baselineSurplus,
     goal, alreadySaved, remaining, targetMonths, requiredMonthly,
-    monthlySurplus, feasible, timelines, atSurplusMonths,
+    monthlySurplus, feasible, timelines, atSurplusMonths, noBaseline, moderateMonths,
     newSurplus: requiredMonthly ? baselineSurplus - requiredMonthly : baselineSurplus,
     newTotal: baselineTotal + (requiredMonthly || 0),
     deltaSurplus: requiredMonthly ? -requiredMonthly : 0,
@@ -451,9 +456,10 @@ const THEME = {
 };
 const TABS = ["baseline","scenario","results"];
 const RISK_CFG = {
-  SAFE:   { label:"Safe",    color:"#166534", bg:"#dcfce7", border:"#86efac", icon:"✦" },
-  STRETCH:{ label:"Stretch", color:"#92400e", bg:"#fef9c3", border:"#fde047", icon:"◈" },
-  RISKY:  { label:"Risky",   color:"#991b1b", bg:"#fee2e2", border:"#fca5a5", icon:"◆" },
+  SAFE:    { label:"Safe",    color:"#166534", bg:"#dcfce7", border:"#86efac", icon:"✦" },
+  STRETCH: { label:"Stretch", color:"#92400e", bg:"#fef9c3", border:"#fde047", icon:"◈" },
+  RISKY:   { label:"Risky",   color:"#991b1b", bg:"#fee2e2", border:"#fca5a5", icon:"◆" },
+  UNKNOWN: { label:"Add Income", color:"#374151", bg:"#F3F4F6", border:"#D1D5DB", icon:"◇" },
 };
 const SCENARIO_META = {
   home:    { emoji:"🏡", label:"Buy a Home",       color:"#4338CA" },
@@ -1382,11 +1388,12 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
       return `Daycare costs are manageable but would leave your emergency runway below the 3-month threshold.`;
     }
     if(sc.type === "savings") {
+      if(r.noBaseline) return `Enter your income in the Baseline tab to see how long it'll take to reach ${fmt(r.goal)}.`;
       if(r.targetMonths > 0 && r.requiredMonthly) {
         if(r.feasible) return `To hit ${fmt(r.goal)} in ${r.targetMonths} months, you need to set aside ${fmt(r.requiredMonthly)}/mo. Your surplus covers it.`;
         return `To hit ${fmt(r.goal)} in ${r.targetMonths} months you'd need ${fmt(r.requiredMonthly)}/mo — ${fmt(r.requiredMonthly - r.monthlySurplus)}/mo more than your current surplus.`;
       }
-      if(r.atSurplusMonths) return `At your current surplus of ${fmt(r.monthlySurplus)}/mo, you'd reach ${fmt(r.goal)} in ${r.atSurplusMonths} months.`;
+      if(r.atSurplusMonths) return `At a moderate savings pace (~${fmt(r.monthlySurplus * 0.5)}/mo), you'd reach ${fmt(r.goal)} in about ${r.moderateMonths || r.atSurplusMonths} months.`;
       return `Enter your income in the Baseline tab to see personalized timelines.`;
     }
     return "";
@@ -1459,6 +1466,8 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
       {ready && (<>
 
       {/* ── VERDICT BANNER ── */}
+      {/* Verdict banner — hidden for savings with no time constraint */}
+      {!(r.type==="savings" && (!r.targetMonths || r.targetMonths===0)) ? (
       <div style={{ position:"relative",overflow:"hidden",background:rc.bg,border:`2px solid ${rc.border}`,borderRadius:20,padding:"22px 24px 20px",marginBottom:14,
         opacity:mounted?1:0,transform:mounted?"none":"scale(0.96)",transition:"all 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}>
         <Confetti active={isSafe&&mounted} />
@@ -1471,12 +1480,41 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
           <div style={{ fontSize:14,color:rc.color,opacity:0.8,fontWeight:500,lineHeight:1.6,borderTop:`1px solid ${rc.border}`,paddingTop:12 }}>{summary}</div>
         </div>
       </div>
+      ) : (
+      <div style={{ background:"#FFFBEB",border:"2px solid #FCD34D",borderRadius:20,padding:"22px 24px 20px",marginBottom:14,
+        opacity:mounted?1:0,transform:mounted?"none":"scale(0.96)",transition:"all 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}>
+        <div style={{ fontSize:10,fontWeight:800,color:"#D97706",opacity:0.7,letterSpacing:"0.16em",textTransform:"uppercase",marginBottom:8 }}>Your Timeline</div>
+        <div style={{ fontSize:22,fontWeight:900,color:"#D97706",lineHeight:1,letterSpacing:"-0.02em",marginBottom:10 }}>🎯 {fmt(r.goal)}</div>
+        <div style={{ fontSize:14,color:"#92400E",fontWeight:500,lineHeight:1.6,borderTop:"1px solid #FDE68A",paddingTop:12 }}>{summary}</div>
+      </div>
+      )}
 
       {/* ── SHARE BUTTON ── */}
       {(()=>{
         const scenarioEmoji = r.type==="home" ? "🏠" : r.type==="car" ? "🚗" : r.type==="job" ? "💼" : r.type==="apt" ? "🏢" : r.type==="daycare" ? "👶" : r.type==="savings" ? "🎯" : "💰";
         const scenarioLabel = r.type==="home" ? "Can We Afford This House?" : r.type==="car" ? "Can We Afford This Car?" : r.type==="job" ? "Can We Afford This Job Change?" : r.type==="apt" ? "Can We Afford This Apartment?" : r.type==="daycare" ? "Can We Afford Daycare?" : r.type==="savings" ? "Savings Goal Planner" : "Can We Afford This?";
-        const shareText = `${scenarioEmoji} ${scenarioLabel}\n\nVerdict: ${rc.label}\nMonthly breathing room: ${fmt(r.newSurplus)}\nHousing ratio: ${pct(r.ratio)}\nEmergency runway: ${r.runway?.toFixed(1)} months\n\nRun your own scenario:\ncanweaffordthis.com`;
+
+        let shareBody = "";
+        if(r.type==="savings") {
+          const timeline = r.targetMonths > 0
+            ? `Required monthly: ${fmt(r.requiredMonthly)}\nTimeline: ${r.targetMonths} months`
+            : r.atSurplusMonths
+              ? `At full surplus: ${r.atSurplusMonths} months to goal`
+              : "";
+          shareBody = `Goal: ${fmt(r.goal)}\nVerdict: ${rc.label}\nMonthly surplus: ${fmt(r.monthlySurplus)}\n${timeline}`;
+        } else if(r.type==="home" || r.type==="apt") {
+          shareBody = `Verdict: ${rc.label}\nMonthly breathing room: ${fmt(r.newSurplus)}\nHousing ratio: ${pct(r.ratio)}\nEmergency runway: ${r.runway?.toFixed(1)} months`;
+        } else if(r.type==="car") {
+          shareBody = `Verdict: ${rc.label}\nMonthly breathing room: ${fmt(r.newSurplus)}\nCar as % of income: ${pct(r.ratio)}\nEmergency runway: ${r.runway?.toFixed(1)} months`;
+        } else if(r.type==="job") {
+          shareBody = `Verdict: ${rc.label}\nMonthly breathing room: ${fmt(r.newSurplus)}\nSalary change: ${r.salaryDelta >= 0 ? "+" : ""}${fmt(r.salaryDelta)}/yr\nEmergency runway: ${r.runway?.toFixed(1)} months`;
+        } else if(r.type==="daycare") {
+          shareBody = `Verdict: ${rc.label}\nNet daycare cost: ${fmt(r.netDaycareCost)}/mo\nMonthly breathing room: ${fmt(r.newSurplus)}\nEmergency runway: ${r.runway?.toFixed(1)} months`;
+        } else {
+          shareBody = `Verdict: ${rc.label}\nMonthly breathing room: ${fmt(r.newSurplus)}\nEmergency runway: ${r.runway?.toFixed(1)} months`;
+        }
+
+        const shareText = `${scenarioEmoji} ${scenarioLabel}\n\n${shareBody}\n\nRun your own scenario:\ncanweaffordthis.com`;
         const handleShare = () => {
           if(navigator.share) {
             navigator.share({ title: scenarioLabel, text: shareText })
@@ -1586,8 +1624,13 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
             </div>
           )}
 
-          {/* No target — show timeline options */}
-          {(!r.targetMonths || r.targetMonths === 0) && r.timelines.length > 0 && (
+          {/* No baseline income entered */}
+          {r.noBaseline && (
+            <div style={{ padding:"14px",background:"#FEF9C3",borderRadius:10,fontSize:13,fontWeight:700,color:"#92400E",textAlign:"center" }}>
+              👆 Add your income in the Baseline tab to see your savings timeline
+            </div>
+          )}
+          {(!r.targetMonths || r.targetMonths === 0) && !r.noBaseline && r.timelines.length > 0 && (
             <div>
               {r.atSurplusMonths&&(
                 <div style={{ marginBottom:14,padding:"10px 14px",background:"#FEF9C3",borderRadius:10,fontSize:13,fontWeight:700,color:"#92400E" }}>
@@ -1611,7 +1654,8 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
         </div>
       )}
 
-      {/* Before → After */}
+      {/* Before → After — hidden for savings with no time constraint */}
+      {!(r.type==="savings" && (!r.targetMonths || r.targetMonths===0)) && (
       <div style={{ background:"#fff",border:"1.5px solid #F3F4F6",borderRadius:16,padding:"20px 22px",marginBottom:14,
         opacity:mounted?1:0,transform:mounted?"none":"translateY(8px)",transition:"all 0.4s ease 0.15s" }}>
         <div style={{ fontSize:10,fontWeight:800,letterSpacing:"0.1em",textTransform:"uppercase",color:"#9CA3AF",marginBottom:16 }}>Monthly Cash Flow — Before vs. After</div>
@@ -1666,6 +1710,7 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
           ))}
         </div>
       </div>
+      )}
 
       {/* Cash + Runway */}
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14,
