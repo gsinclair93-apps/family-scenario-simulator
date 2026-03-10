@@ -1269,6 +1269,7 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
   const rc=RISK_CFG[r.risk];
   const meta=SCENARIO_META[sc.type];
   const [mounted, setMounted] = useState(false);
+  const [shared, setShared] = useState(false);
   const isSafe = r.risk === "SAFE";
 
   useEffect(() => { setMounted(false); const t = setTimeout(() => setMounted(true), 50); return () => clearTimeout(t); }, [r, ready]);
@@ -1389,14 +1390,13 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
 
       {/* ── SHARE BUTTON ── */}
       {(()=>{
-        const [shared, setShared] = useState(false);
         const scenarioLabel = r.type==="home" ? "Can We Afford This House?" : r.type==="car" ? "Can We Afford This Car?" : r.type==="job" ? "Can We Afford This Job Change?" : r.type==="apt" ? "Can We Afford This Apartment?" : r.type==="daycare" ? "Can We Afford Daycare?" : "Can We Afford This?";
         const shareText = `🏠 ${scenarioLabel}\n\nVerdict: ${rc.label}\nMonthly breathing room: ${fmt(r.newSurplus)}\nHousing ratio: ${pct(r.ratio)}\nEmergency runway: ${r.runway?.toFixed(1)} months\n\nRun your own scenario:\ncanweaffordthis.com`;
         const handleShare = () => {
           if(navigator.share) {
             navigator.share({ title: scenarioLabel, text: shareText })
               .then(()=>{ setShared(true); setTimeout(()=>setShared(false), 3000); })
-              .catch(()=>{}); // user dismissed share sheet — do nothing
+              .catch(()=>{});
           } else {
             navigator.clipboard.writeText(shareText).then(()=>{
               setShared(true);
