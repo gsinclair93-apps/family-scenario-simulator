@@ -1364,53 +1364,24 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
 
   useEffect(() => { setMounted(false); const t = setTimeout(() => setMounted(true), 50); return () => clearTimeout(t); }, [r, ready]);
 
-  // Plain-English summary — driven by the actual stress test signals
+  // Plain-English summary
   const summary = (() => {
     const surplus = fmt(Math.abs(r.newSurplus));
     const run = mths(r.runway);
-
-    // Helper: which stress test is the primary offender?
-    // Returns a human-readable reason string for STRETCH or RISKY verdicts.
-    const primaryReason = (() => {
-      const isCarType = sc.type === "car";
-      const ratioPass = r.ratio <= (isCarType ? 0.10 : 0.28);
-      const ratioWarn = r.ratio <= (isCarType ? 0.15 : 0.35);
-      const surplusPass = r.newSurplus > r.netIncome * 0.30;
-      const surplusWarn = r.newSurplus > r.netIncome * 0.15;
-      const runwayPass = r.runway >= 6;
-      const runwayWarn = r.runway >= 3;
-      const cashPass = r.remainingSavings > 5000;
-      const cashWarn = r.remainingSavings > 0;
-
-      // Priority: hard failures first, then warnings
-      if(r.newSurplus < 0)      return `your expenses would exceed income by ${surplus}/mo`;
-      if(!ratioWarn) {
-        const label = sc.type==="car" ? "car cost" : sc.type==="apt" ? "rent" : "housing cost";
-        return `${label} would be ${pct(r.ratio)} of take-home — above the ${isCarType?"15%":"35%"} ceiling`;
-      }
-      if(!runwayWarn)            return `closing costs would leave under 3 months of emergency runway`;
-      if(!cashWarn)              return `you'd have negative savings after upfront costs`;
-      if(!surplusWarn)           return `only ${fmt(r.newSurplus)}/mo would remain — below the 15% discretionary floor`;
-      // Warnings (STRETCH zone)
-      if(!ratioPass) {
-        const label = sc.type==="car" ? "car cost" : sc.type==="apt" ? "rent" : "housing cost";
-        return `${label} would be ${pct(r.ratio)} of take-home — slightly above the ${isCarType?"10%":"28%"} target`;
-      }
-      if(!runwayPass)            return `you'd have ${run} of emergency runway — below the 6-month target`;
-      if(!surplusPass)           return `${fmt(r.newSurplus)}/mo surplus is below the recommended 30% of take-home`;
-      if(!cashPass)              return `savings cushion after costs would be low`;
-      return null;
-    })();
-
     if(sc.type === "home") {
       if(r.risk==="SAFE")    return `At ${fmt(sc.homePrice)}, you'd have ${fmt(r.newSurplus)}/mo left over and ${run} of runway. Looks good.`;
-      if(primaryReason)      return `At ${fmt(sc.homePrice)}, ${primaryReason}.`;
-      return `At ${fmt(sc.homePrice)}, this is a stretch — the payment is high relative to your income.`;
+      if(r.risk==="STRETCH") return `At ${fmt(sc.homePrice)}, you'd have ${fmt(r.newSurplus)}/mo left over — tight, but doable with discipline.`;
+      if(r.newSurplus < 0)   return `At ${fmt(sc.homePrice)}, your expenses would exceed your income by ${surplus}/mo. Consider a lower price.`;
+      if(r.ratio > 0.35)     return `At ${fmt(sc.homePrice)}, housing would consume ${pct(r.ratio)} of your take-home — well above the 35% safe threshold.`;
+      if(r.newSurplus < r.netIncome * 0.15) return `At ${fmt(sc.homePrice)}, the payment is technically possible but leaves only ${fmt(r.newSurplus)}/mo — too thin for a family budget.`;
+      if(r.runway < 3)       return `At ${fmt(sc.homePrice)}, the monthly payment is manageable but closing costs would leave you with less than 3 months of emergency runway.`;
+      return `At ${fmt(sc.homePrice)}, this is a stretch — the payment is high relative to your income and leaves little room for error.`;
     }
     if(sc.type === "car") {
       if(r.risk==="SAFE")    return `This adds ${fmt(r.scenarioCost)}/mo to your budget and leaves ${fmt(r.newSurplus)}/mo surplus. Affordable.`;
-      if(primaryReason)      return `At ${fmt(r.scenarioCost)}/mo, ${primaryReason}.`;
-      return `At ${fmt(r.scenarioCost)}/mo, the payment would strain your budget.`;
+      if(r.risk==="STRETCH") return `This adds ${fmt(r.scenarioCost)}/mo and leaves ${fmt(r.newSurplus)}/mo — manageable but watch the runway.`;
+      if(r.newSurplus < 0)   return `At ${fmt(r.scenarioCost)}/mo, this car strains your budget — expenses would exceed income by ${surplus}/mo.`;
+      return `At ${fmt(r.scenarioCost)}/mo, the payment is workable but would leave your emergency fund below the 3-month safety threshold.`;
     }
     if(sc.type === "job") {
       const dir = r.salaryDelta >= 0 ? "up" : "down";
@@ -1418,13 +1389,14 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
     }
     if(sc.type === "apt") {
       if(r.risk==="SAFE")    return `At ${fmt(sc.newRent)}/mo rent, you'd keep ${fmt(r.newSurplus)}/mo surplus. Comfortable.`;
-      if(primaryReason)      return `At ${fmt(sc.newRent)}/mo, ${primaryReason}.`;
-      return `At ${fmt(sc.newRent)}/mo, rent would exceed your comfortable range.`;
+      if(r.risk==="STRETCH") return `At ${fmt(sc.newRent)}/mo, you'd have ${fmt(r.newSurplus)}/mo left — workable but snug.`;
+      return `At ${fmt(sc.newRent)}/mo, rent would exceed your comfortable range and leave a tight margin.`;
     }
     if(sc.type === "daycare") {
       if(r.risk==="SAFE")    return `Net daycare cost of ${fmt(r.netDaycareCost)}/mo leaves you with ${fmt(r.newSurplus)}/mo surplus. Manageable.`;
-      if(primaryReason)      return `At ${fmt(r.netDaycareCost)}/mo net, ${primaryReason}.`;
-      return `Daycare costs would leave your budget uncomfortably tight.`;
+      if(r.risk==="STRETCH") return `At ${fmt(r.netDaycareCost)}/mo net, daycare is a real stretch — you'd have ${fmt(r.newSurplus)}/mo left.`;
+      if(r.newSurplus < 0)   return `At ${fmt(r.netDaycareCost)}/mo net, daycare costs would put you in the red by ${fmt(Math.abs(r.newSurplus))}/mo.`;
+      return `Daycare costs are manageable but would leave your emergency runway below the 3-month threshold.`;
     }
     if(sc.type === "savings") {
       if(r.noBaseline) return `Enter your income in the Baseline tab to see how long it'll take to reach ${fmt(r.goal)}.`;
@@ -1559,7 +1531,7 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
         const shareText = `${scenarioEmoji} ${scenarioLabel}\n\n${shareBody}\n\nRun your own scenario:\ncanweaffordthis.com`;
         const handleShare = () => {
           if(navigator.share) {
-            navigator.share({ title: scenarioLabel, text: shareText })
+            navigator.share({ title: scenarioLabel, text: shareText, url: "https://canweaffordthis.com" })
               .then(()=>{ setShared(true); setTimeout(()=>setShared(false), 3000); })
               .catch(()=>{});
           } else {
