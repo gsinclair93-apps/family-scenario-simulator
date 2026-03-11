@@ -3,12 +3,12 @@
     {
       "source": "/blog",
       "destination": "https://blog.canweaffordthis.com",
-      "permanent": false
+      "permanent": true
     },
     {
       "source": "/blog/:path*",
       "destination": "https://blog.canweaffordthis.com/:path*",
-      "permanent": false
+      "permanent": true
     }
   ]
 }
