@@ -113,7 +113,10 @@ function calcHome(b, sc) {
   const runway = newTotal>0 ? Math.max(0,remainingSavings)/newTotal : 0;
   const ratioSafe = housingRatio<=0.28, ratioRisky = housingRatio>0.35;
   const runwayRisky = runway<3;
-  const risk = newSurplus<0||ratioRisky||runwayRisky?"RISKY":ratioSafe?"SAFE":"STRETCH";
+  const discretionaryMin = netIncome * 0.30; // 30% of take-home should remain discretionary
+  const surplusRisky = newSurplus < (discretionaryMin * 0.5); // below 15% of take-home = risky
+  const surplusStretch = newSurplus < discretionaryMin; // below 30% of take-home = stretch
+  const risk = newSurplus<0||ratioRisky||runwayRisky||surplusRisky?"RISKY":ratioSafe&&!surplusStretch?"SAFE":"STRETCH";
   const comfortPrice = solvePriceForRatio(0.28,netIncome,sc.downPayment,sc.interestRate,sc.loanTerm,sc.annualTax);
   const stretchPrice = solvePriceForRatio(0.35,netIncome,sc.downPayment,sc.interestRate,sc.loanTerm,sc.annualTax);
   return {
@@ -876,8 +879,13 @@ function BaselineHealthCheck({ b }) {
     },
     {
       label: "Monthly surplus",
-      pass: surplus > 500, warn: surplus > 0,
-      note: net > 0 ? (surplus < 0 ? "Expenses exceed income" : `${fmt(surplus)}/mo remaining`) : "Enter income to calculate",
+      pass: surplus > net * 0.30, warn: surplus > net * 0.15,
+      note: net > 0
+        ? surplus < 0 ? "Expenses exceed income"
+          : surplus < net * 0.30
+            ? `${fmt(surplus)}/mo remaining — 30% of take-home (${fmt(net*0.30)}) recommended for discretionary spending`
+            : `${fmt(surplus)}/mo remaining`
+        : "Enter income to calculate",
     },
     {
       label: "Emergency runway",
@@ -1364,7 +1372,10 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
       if(r.risk==="SAFE")    return `At ${fmt(sc.homePrice)}, you'd have ${fmt(r.newSurplus)}/mo left over and ${run} of runway. Looks good.`;
       if(r.risk==="STRETCH") return `At ${fmt(sc.homePrice)}, you'd have ${fmt(r.newSurplus)}/mo left over — tight, but doable with discipline.`;
       if(r.newSurplus < 0)   return `At ${fmt(sc.homePrice)}, your expenses would exceed your income by ${surplus}/mo. Consider a lower price.`;
-      return `At ${fmt(sc.homePrice)}, the monthly payment is manageable but the upfront costs leave you with less than 3 months of emergency runway.`;
+      if(r.ratio > 0.35)     return `At ${fmt(sc.homePrice)}, housing would consume ${pct(r.ratio)} of your take-home — well above the 35% safe threshold.`;
+      if(r.newSurplus < r.netIncome * 0.15) return `At ${fmt(sc.homePrice)}, the payment is technically possible but leaves only ${fmt(r.newSurplus)}/mo — too thin for a family budget.`;
+      if(r.runway < 3)       return `At ${fmt(sc.homePrice)}, the monthly payment is manageable but closing costs would leave you with less than 3 months of emergency runway.`;
+      return `At ${fmt(sc.homePrice)}, this is a stretch — the payment is high relative to your income and leaves little room for error.`;
     }
     if(sc.type === "car") {
       if(r.risk==="SAFE")    return `This adds ${fmt(r.scenarioCost)}/mo to your budget and leaves ${fmt(r.newSurplus)}/mo surplus. Affordable.`;
@@ -1415,9 +1426,12 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
     },
     {
       label:"Monthly surplus",
-      pass:r.newSurplus>500, warn:r.newSurplus>0,
-      passThreshold: 0, warnThreshold: 0, ratio: 0, // bar not meaningful here
-      note:r.newSurplus<0?"Negative — expenses exceed income":`${fmt(r.newSurplus)}/mo remaining`,
+      pass:r.newSurplus > r.netIncome * 0.30, warn:r.newSurplus > r.netIncome * 0.15,
+      passThreshold: 0, warnThreshold: 0, ratio: 0,
+      note:r.newSurplus<0?"Negative — expenses exceed income"
+        : r.newSurplus < r.netIncome * 0.30
+          ? `${fmt(r.newSurplus)}/mo remaining — 30% of take-home (${fmt(r.netIncome*0.30)}) recommended for discretionary spending`
+          : `${fmt(r.newSurplus)}/mo remaining`,
     },
     {
       label:"Emergency fund runway",
@@ -1538,6 +1552,13 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
           </button>
         );
       })()}
+
+      {/* Home-specific disclaimer */}
+      {r.type==="home"&&(
+        <div style={{ marginBottom:14, opacity:mounted?1:0, transform:mounted?"none":"translateY(8px)", transition:"all 0.4s ease 0.1s" }}>
+          <InfoBox text="This figure only reflects changes to your housing cost. It does not account for potential increases to utilities, maintenance, or other household expenses when moving to a larger home." color="#4338CA" bg="#EEF2FF" border="#C7D2FE" />
+        </div>
+      )}
 
       {/* Job-specific callout */}
       {r.type==="job"&&(
@@ -1688,9 +1709,9 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
               {r.deltaSurplus>=0?"+":""}<AnimatedMoney value={r.deltaSurplus} />
             </div>
           </div>
-          <div style={{ background:r.newSurplus<0?"#FEF2F2":"#F0FDF4",border:`1.5px solid ${r.newSurplus<0?"#FCA5A5":"#86EFAC"}`,borderRadius:12,padding:"12px 12px",minWidth:0,overflow:"hidden" }}>
+          <div style={{ background:r.newSurplus<0?"#FEF2F2":r.newSurplus<r.netIncome*0.30?"#fef9c3":"#F0FDF4",border:`1.5px solid ${r.newSurplus<0?"#FCA5A5":r.newSurplus<r.netIncome*0.30?"#fde047":"#86EFAC"}`,borderRadius:12,padding:"12px 12px",minWidth:0,overflow:"hidden" }}>
             <div style={{ fontSize:10,color:"#9CA3AF",fontWeight:800,textTransform:"uppercase",letterSpacing:"0.07em" }}>After</div>
-            <div style={{ fontSize:16,fontWeight:900,color:r.newSurplus<0?"#DC2626":"#059669",fontFamily:"monospace",marginTop:5,whiteSpace:"nowrap" }}>
+            <div style={{ fontSize:16,fontWeight:900,color:r.newSurplus<0?"#DC2626":r.newSurplus<r.netIncome*0.30?"#D97706":"#059669",fontFamily:"monospace",marginTop:5,whiteSpace:"nowrap" }}>
               <AnimatedMoney value={r.newSurplus} />
             </div>
             <div style={{ fontSize:11.5,color:"#6B7280",marginTop:3,fontWeight:600 }}>surplus/mo</div>
@@ -1701,7 +1722,7 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
             ["Take-home income", fmt(r.netIncome)+"/mo", "#111"],
             [r.label+" ("+r.prevLabel+")", fmt(r.scenarioCost)+"/mo", r.ratio>(sc.type==="car"?0.15:0.35)?"#DC2626":r.ratio>(sc.type==="car"?0.10:0.28)?"#D97706":"#111"],
             ["Total monthly outflow", fmt(r.newTotal)+"/mo", "#111"],
-            [sc.type==="job"?"Expense ratio":"Cost as % of income", pct(r.ratio), r.ratio>(sc.type==="car"?0.15:0.35)?"#DC2626":r.ratio>(sc.type==="car"?0.10:0.28)?"#D97706":"#059669"],
+            [sc.type==="job"?"Expense ratio":sc.type==="home"||sc.type==="apt"?"Housing as % of income":"Cost as % of income", pct(r.ratio), r.ratio>(sc.type==="car"?0.15:0.35)?"#DC2626":r.ratio>(sc.type==="car"?0.10:0.28)?"#D97706":"#059669"],
           ].map(([l,v,c])=>(
             <div key={l} style={{ display:"flex",justifyContent:"space-between",alignItems:"baseline" }}>
               <span style={{ fontSize:13,color:"#4B5563",fontWeight:600 }}>{l}</span>
