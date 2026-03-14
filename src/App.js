@@ -87,6 +87,79 @@ function getBaselineIncome(b) {
   return { ...primary, net: primary.net + partnerNet, partnerNet };
 }
 
+// ─── SHARED RISK ENGINE ───────────────────────────────────────────────────────
+// Single source of truth for verdict + reason across all scenarios.
+// Returns { risk, tests, reasons }
+// tests: array of { label, level: "SAFE"|"STRETCH"|"RISKY", note }
+// reasons: plain-English strings for each non-SAFE test
+function assessRisk({ ratio, ratioSafeMax, ratioStretchMax, ratioLabel,
+                      newSurplus, netIncome,
+                      runway, remainingSavings }) {
+
+  // ── 1. Cost-to-income ratio ──
+  const ratioLevel = ratio <= ratioSafeMax ? "SAFE"
+                   : ratio <= ratioStretchMax ? "STRETCH"
+                   : "RISKY";
+  const ratioNote = `${pct(ratio)} of income — target ≤ ${pct(ratioSafeMax)}`;
+  const ratioReason = ratioLevel === "STRETCH"
+    ? `${ratioLabel} is ${pct(ratio)} of take-home — slightly above the ${pct(ratioSafeMax)} target`
+    : ratioLevel === "RISKY"
+    ? `${ratioLabel} is ${pct(ratio)} of take-home — well above the ${pct(ratioStretchMax)} ceiling`
+    : null;
+
+  // ── 2. Monthly surplus (% of net income) ──
+  const surplusPct = netIncome > 0 ? newSurplus / netIncome : 0;
+  const surplusLevel = newSurplus < 0 ? "RISKY"
+                     : surplusPct < 0.05 ? "RISKY"
+                     : surplusPct < 0.15 ? "STRETCH"
+                     : "SAFE";
+  const surplusNote = newSurplus < 0 ? "Negative — expenses exceed income"
+    : `${fmt(newSurplus)}/mo remaining (${pct(surplusPct)} of take-home)`;
+  const surplusReason = surplusLevel === "RISKY"
+    ? (newSurplus < 0 ? "expenses would exceed income" : `only ${fmt(newSurplus)}/mo surplus — below the 5% safety floor`)
+    : surplusLevel === "STRETCH"
+    ? `${fmt(newSurplus)}/mo surplus is thin — between 5–15% of take-home`
+    : null;
+
+  // ── 3. Emergency runway ──
+  const runwayLevel = runway >= 5 ? "SAFE" : runway >= 3 ? "STRETCH" : "RISKY";
+  const runwayNote = `${mths(runway)} of expenses covered`;
+  const runwayReason = runwayLevel === "RISKY"
+    ? `only ${mths(runway)} of emergency runway — below the 3-month floor`
+    : runwayLevel === "STRETCH"
+    ? `${mths(runway)} of emergency runway — below the 5-month target`
+    : null;
+
+  // ── 4. Upfront cash ──
+  const cashLevel = remainingSavings < 0 ? "RISKY" : remainingSavings < 2000 ? "STRETCH" : "SAFE";
+  const cashNote = remainingSavings < 0 ? "Insufficient savings for upfront costs"
+    : `${fmt(remainingSavings)} remaining after costs`;
+  const cashReason = cashLevel === "RISKY" ? "insufficient savings to cover upfront costs"
+    : cashLevel === "STRETCH" ? `only ${fmt(remainingSavings)} left after upfront costs — very thin cushion`
+    : null;
+
+  const tests = [
+    { label: ratioLabel,           level: ratioLevel,   note: ratioNote,   passThreshold: ratioSafeMax,   ratio },
+    { label: "Monthly surplus",    level: surplusLevel, note: surplusNote, passThreshold: 0,              ratio: 0 },
+    { label: "Emergency runway",   level: runwayLevel,  note: runwayNote,  passThreshold: 5/12,           ratio: Math.min(runway/12, 1) },
+    { label: "Upfront cash check", level: cashLevel,    note: cashNote,    passThreshold: 0,              ratio: 0 },
+  ];
+
+  const riskyCount   = tests.filter(t => t.level === "RISKY").length;
+  const stretchCount = tests.filter(t => t.level === "STRETCH").length;
+
+  // Verdict: any RISKY = RISKY; 2+ STRETCH = STRETCH; 1 STRETCH = SAFE with note; all SAFE = SAFE
+  const risk = riskyCount > 0 ? "RISKY"
+             : stretchCount >= 2 ? "STRETCH"
+             : stretchCount === 1 ? "SAFE"
+             : "SAFE";
+
+  // Collect all non-SAFE reasons for summary text
+  const reasons = [ratioReason, surplusReason, runwayReason, cashReason].filter(Boolean);
+
+  return { risk, tests, reasons };
+}
+
 // ── HOME scenario ──
 function calcHome(b, sc) {
   const taxResult = getBaselineIncome(b);
@@ -111,18 +184,15 @@ function calcHome(b, sc) {
   const deltaSurplus = newSurplus - baselineSurplus;
   const housingRatio = netIncome>0 ? newHousing/netIncome : 0;
   const runway = newTotal>0 ? Math.max(0,remainingSavings)/newTotal : 0;
-  const ratioSafe = housingRatio<=0.28, ratioRisky = housingRatio>0.35;
-  const runwayRisky = runway<3;
-  const discretionaryMin = netIncome * 0.30; // 30% of take-home should remain discretionary
-  const surplusRisky = newSurplus < (discretionaryMin * 0.5); // below 15% of take-home = risky
-  const surplusStretch = newSurplus < discretionaryMin; // below 30% of take-home = stretch
-  const risk = newSurplus<0||ratioRisky||runwayRisky||surplusRisky?"RISKY":ratioSafe&&!surplusStretch?"SAFE":"STRETCH";
+  const assessed = assessRisk({ ratio:housingRatio, ratioSafeMax:0.32, ratioStretchMax:0.38,
+    ratioLabel:"Housing cost", newSurplus, netIncome, runway, remainingSavings });
   const comfortPrice = solvePriceForRatio(0.28,netIncome,sc.downPayment,sc.interestRate,sc.loanTerm,sc.annualTax);
   const stretchPrice = solvePriceForRatio(0.35,netIncome,sc.downPayment,sc.interestRate,sc.loanTerm,sc.annualTax);
   return {
     type:"home", netIncome, taxResult, baselineTotal, baselineSurplus,
     scenarioCost:newHousing, newTotal, newSurplus, deltaSurplus,
-    ratio:housingRatio, cashNeeded, remainingSavings, runway, risk,
+    ratio:housingRatio, cashNeeded, remainingSavings, runway,
+    risk:assessed.risk, riskTests:assessed.tests, riskReasons:assessed.reasons,
     mortgage, insurance, closing, comfortPrice, stretchPrice, pmiMonthly, pmiApplies, hoaMonthly,
     label:"New Housing Cost", prevLabel:`was ${fmt(baselineHousing)}/mo`,
   };
@@ -159,12 +229,14 @@ function calcCar(b, sc) {
   const deltaSurplus = newSurplus - baselineSurplus;
   const ratio = netIncome>0 ? totalNewCarCost/netIncome : 0;
   const runway = newTotal>0 ? Math.max(0,remainingSavings)/newTotal : 0;
-  const risk = ratio<=0.10&&runway>=6&&newSurplus>0?"SAFE":ratio>0.15||runway<3||newSurplus<0?"RISKY":"STRETCH";
+  const assessed = assessRisk({ ratio, ratioSafeMax:0.10, ratioStretchMax:0.15,
+    ratioLabel:"Car cost", newSurplus, netIncome, runway, remainingSavings });
 
   return {
     type:"car", netIncome, taxResult, baselineTotal, baselineSurplus,
     scenarioCost:totalNewCarCost, newTotal, newSurplus, deltaSurplus,
-    ratio, cashNeeded, remainingSavings, runway, risk,
+    ratio, cashNeeded, remainingSavings, runway,
+    risk:assessed.risk, riskTests:assessed.tests, riskReasons:assessed.reasons,
     monthly, insuranceDelta,
     label:"New Car Cost/mo", prevLabel:"added to budget",
   };
@@ -202,14 +274,16 @@ function calcJob(b, sc) {
   const runway = newTotal>0 ? Math.max(0,remainingSavings)/newTotal : 0;
   const ratio = newNet>0 ? newTotal/newNet : 0; // total expense ratio
 
-  const risk = deltaSurplus>=0&&runway>=6?"SAFE":deltaSurplus<0||runway<3?"RISKY":"STRETCH";
+  const assessed = assessRisk({ ratio, ratioSafeMax:0.70, ratioStretchMax:0.85,
+    ratioLabel:"Expense ratio", newSurplus, netIncome:newNet, runway, remainingSavings });
 
   return {
     type:"job", netIncome:newNet, oldNet, newTaxResult, oldTaxResult,
     baselineTotal, baselineSurplus,
     scenarioCost:commuteDelta+benefitsDelta,
     newTotal, newSurplus, deltaSurplus, salaryDelta,
-    ratio, cashNeeded:0, remainingSavings, runway, risk,
+    ratio, cashNeeded:0, remainingSavings, runway,
+    risk:assessed.risk, riskTests:assessed.tests, riskReasons:assessed.reasons,
     commuteDelta, benefitsDelta, netOneTime, breakEven,
     label:"Monthly Expense Change", prevLabel:"commute + benefits delta",
   };
@@ -230,12 +304,14 @@ function calcApartment(b, sc) {
   const deltaSurplus = newSurplus - baselineSurplus;
   const ratio = netIncome>0 ? newRent/netIncome : 0;
   const runway = newTotal>0 ? Math.max(0,remainingSavings)/newTotal : 0;
-  const risk = ratio<=0.28&&runway>=6&&newSurplus>0?"SAFE":ratio>0.35||runway<3||newSurplus<0?"RISKY":"STRETCH";
+  const assessed = assessRisk({ ratio, ratioSafeMax:0.32, ratioStretchMax:0.38,
+    ratioLabel:"Rent", newSurplus, netIncome, runway, remainingSavings });
 
   return {
     type:"apt", netIncome, taxResult, baselineTotal, baselineSurplus,
     scenarioCost:newRent, newTotal, newSurplus, deltaSurplus,
-    ratio, cashNeeded, remainingSavings, runway, risk,
+    ratio, cashNeeded, remainingSavings, runway,
+    risk:assessed.risk, riskTests:assessed.tests, riskReasons:assessed.reasons,
     label:"New Rent", prevLabel:`was ${fmt(baselineHousing)}/mo`,
   };
 }
@@ -259,7 +335,9 @@ function calcDaycare(b, sc) {
   const newSurplus       = newNet - newTotal;
   const deltaSurplus     = newSurplus - baselineSurplus;
   const runway           = newTotal > 0 ? Math.max(0, b.savings) / newTotal : 0;
-  const risk             = newSurplus < 0 || runway < 3 ? "RISKY" : newSurplus > 500 && runway >= 6 ? "SAFE" : "STRETCH";
+  const daycareRatio = newNet > 0 ? netDaycareCost / newNet : 0;
+  const assessed = assessRisk({ ratio:daycareRatio, ratioSafeMax:0.10, ratioStretchMax:0.15,
+    ratioLabel:"Daycare cost", newSurplus, netIncome:newNet, runway, remainingSavings:b.savings });
 
   // Break-even: is it worth both parents working?
   const worthWorking = lostIncome > 0 ? lostIncome > netDaycareCost : null;
@@ -268,7 +346,8 @@ function calcDaycare(b, sc) {
     type:"daycare", netIncome:newNet, taxResult, baselineTotal, baselineSurplus,
     scenarioCost:netDaycareCost, newTotal, newSurplus, deltaSurplus,
     grossDaycareCost, netDaycareCost, fsaBenefit, lostIncome, worthWorking,
-    runway, risk, ratio: newTotal > 0 ? netDaycareCost / newNet : 0,
+    runway, ratio:daycareRatio,
+    risk:assessed.risk, riskTests:assessed.tests, riskReasons:assessed.reasons,
     cashNeeded:0, remainingSavings:b.savings,
     label:"Monthly Daycare Cost", prevLabel:`${numChildren} child${numChildren>1?"ren":""}`,
   };
@@ -1364,39 +1443,42 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
 
   useEffect(() => { setMounted(false); const t = setTimeout(() => setMounted(true), 50); return () => clearTimeout(t); }, [r, ready]);
 
-  // Plain-English summary
+  // Plain-English summary — reads directly from assessRisk output (r.riskReasons)
   const summary = (() => {
-    const surplus = fmt(Math.abs(r.newSurplus));
     const run = mths(r.runway);
+    const reasons = r.riskReasons || [];
+    const reasonText = reasons.length === 0 ? null
+      : reasons.length === 1 ? reasons[0]
+      : reasons.slice(0, -1).join(", ") + ", and " + reasons[reasons.length - 1];
+
     if(sc.type === "home") {
-      if(r.risk==="SAFE")    return `At ${fmt(sc.homePrice)}, you'd have ${fmt(r.newSurplus)}/mo left over and ${run} of runway. Looks good.`;
-      if(r.risk==="STRETCH") return `At ${fmt(sc.homePrice)}, you'd have ${fmt(r.newSurplus)}/mo left over — tight, but doable with discipline.`;
-      if(r.newSurplus < 0)   return `At ${fmt(sc.homePrice)}, your expenses would exceed your income by ${surplus}/mo. Consider a lower price.`;
-      if(r.ratio > 0.35)     return `At ${fmt(sc.homePrice)}, housing would consume ${pct(r.ratio)} of your take-home — well above the 35% safe threshold.`;
-      if(r.newSurplus < r.netIncome * 0.15) return `At ${fmt(sc.homePrice)}, the payment is technically possible but leaves only ${fmt(r.newSurplus)}/mo — too thin for a family budget.`;
-      if(r.runway < 3)       return `At ${fmt(sc.homePrice)}, the monthly payment is manageable but closing costs would leave you with less than 3 months of emergency runway.`;
-      return `At ${fmt(sc.homePrice)}, this is a stretch — the payment is high relative to your income and leaves little room for error.`;
+      if(r.risk==="SAFE" && !reasonText) return `At ${fmt(sc.homePrice)}, you'd have ${fmt(r.newSurplus)}/mo left over and ${run} of runway. Looks good.`;
+      if(r.risk==="SAFE" && reasonText)  return `At ${fmt(sc.homePrice)}, looks good overall — worth noting that ${reasonText}.`;
+      if(reasonText)                     return `At ${fmt(sc.homePrice)}, ${reasonText}.`;
+      return `At ${fmt(sc.homePrice)}, the payment is high relative to your income.`;
     }
     if(sc.type === "car") {
-      if(r.risk==="SAFE")    return `This adds ${fmt(r.scenarioCost)}/mo to your budget and leaves ${fmt(r.newSurplus)}/mo surplus. Affordable.`;
-      if(r.risk==="STRETCH") return `This adds ${fmt(r.scenarioCost)}/mo and leaves ${fmt(r.newSurplus)}/mo — manageable but watch the runway.`;
-      if(r.newSurplus < 0)   return `At ${fmt(r.scenarioCost)}/mo, this car strains your budget — expenses would exceed income by ${surplus}/mo.`;
-      return `At ${fmt(r.scenarioCost)}/mo, the payment is workable but would leave your emergency fund below the 3-month safety threshold.`;
+      if(r.risk==="SAFE" && !reasonText) return `This adds ${fmt(r.scenarioCost)}/mo to your budget and leaves ${fmt(r.newSurplus)}/mo surplus. Affordable.`;
+      if(r.risk==="SAFE" && reasonText)  return `Affordable overall — worth noting that ${reasonText}.`;
+      if(reasonText)                     return `At ${fmt(r.scenarioCost)}/mo, ${reasonText}.`;
+      return `At ${fmt(r.scenarioCost)}/mo, the payment would strain your budget.`;
     }
     if(sc.type === "job") {
       const dir = r.salaryDelta >= 0 ? "up" : "down";
-      return `Your take-home goes ${dir} by ${fmt(Math.abs(r.salaryDelta))}/mo. After expenses, you'd have ${fmt(r.newSurplus)}/mo surplus.`;
+      const base = `Your take-home goes ${dir} by ${fmt(Math.abs(r.salaryDelta))}/mo. After expenses, you'd have ${fmt(r.newSurplus)}/mo surplus.`;
+      return reasonText ? `${base} Note: ${reasonText}.` : base;
     }
     if(sc.type === "apt") {
-      if(r.risk==="SAFE")    return `At ${fmt(sc.newRent)}/mo rent, you'd keep ${fmt(r.newSurplus)}/mo surplus. Comfortable.`;
-      if(r.risk==="STRETCH") return `At ${fmt(sc.newRent)}/mo, you'd have ${fmt(r.newSurplus)}/mo left — workable but snug.`;
-      return `At ${fmt(sc.newRent)}/mo, rent would exceed your comfortable range and leave a tight margin.`;
+      if(r.risk==="SAFE" && !reasonText) return `At ${fmt(sc.newRent)}/mo rent, you'd keep ${fmt(r.newSurplus)}/mo surplus. Comfortable.`;
+      if(r.risk==="SAFE" && reasonText)  return `Comfortable overall — worth noting that ${reasonText}.`;
+      if(reasonText)                     return `At ${fmt(sc.newRent)}/mo, ${reasonText}.`;
+      return `At ${fmt(sc.newRent)}/mo, rent would exceed your comfortable range.`;
     }
     if(sc.type === "daycare") {
-      if(r.risk==="SAFE")    return `Net daycare cost of ${fmt(r.netDaycareCost)}/mo leaves you with ${fmt(r.newSurplus)}/mo surplus. Manageable.`;
-      if(r.risk==="STRETCH") return `At ${fmt(r.netDaycareCost)}/mo net, daycare is a real stretch — you'd have ${fmt(r.newSurplus)}/mo left.`;
-      if(r.newSurplus < 0)   return `At ${fmt(r.netDaycareCost)}/mo net, daycare costs would put you in the red by ${fmt(Math.abs(r.newSurplus))}/mo.`;
-      return `Daycare costs are manageable but would leave your emergency runway below the 3-month threshold.`;
+      if(r.risk==="SAFE" && !reasonText) return `Net daycare cost of ${fmt(r.netDaycareCost)}/mo leaves you with ${fmt(r.newSurplus)}/mo surplus. Manageable.`;
+      if(r.risk==="SAFE" && reasonText)  return `Manageable overall — worth noting that ${reasonText}.`;
+      if(reasonText)                     return `At ${fmt(r.netDaycareCost)}/mo net, ${reasonText}.`;
+      return `Daycare costs would leave your budget uncomfortably tight.`;
     }
     if(sc.type === "savings") {
       if(r.noBaseline) return `Enter your income in the Baseline tab to see how long it'll take to reach ${fmt(r.goal)}.`;
@@ -1410,43 +1492,15 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
     return "";
   })();
 
-  const stressTests = [
-    {
-      label: sc.type==="job" ? "Expense-to-income ratio" : "Cost-to-income ratio",
-      pass: r.ratio<=(sc.type==="car"?0.10:0.28),
-      warn: r.ratio<=(sc.type==="car"?0.15:0.35),
-      passThreshold: sc.type==="car"?0.10:0.28,
-      warnThreshold: sc.type==="car"?0.15:0.35,
-      ratio: r.ratio,
-      note: sc.type==="car"
-        ? `${pct(r.ratio)} of income on car — target ≤ 10%`
-        : sc.type==="job"
-        ? `${pct(r.ratio)} of income on total expenses`
-        : `${pct(r.ratio)} of income — target ≤ 28%`,
-    },
-    {
-      label:"Monthly surplus",
-      pass:r.newSurplus > r.netIncome * 0.30, warn:r.newSurplus > r.netIncome * 0.15,
-      passThreshold: 0, warnThreshold: 0, ratio: 0,
-      note:r.newSurplus<0?"Negative — expenses exceed income"
-        : r.newSurplus < r.netIncome * 0.30
-          ? `${fmt(r.newSurplus)}/mo remaining — 30% of take-home (${fmt(r.netIncome*0.30)}) recommended for discretionary spending`
-          : `${fmt(r.newSurplus)}/mo remaining`,
-    },
-    {
-      label:"Emergency fund runway",
-      pass:r.runway>=6, warn:r.runway>=3,
-      passThreshold: 6/12, warnThreshold: 3/12,
-      ratio: Math.min(r.runway/12, 1),
-      note:`${mths(r.runway)} of expenses covered`,
-    },
-    {
-      label: sc.type==="home"||sc.type==="apt" ? "Upfront cash check" : sc.type==="car" ? "Cash after purchase" : "Net one-time impact",
-      pass: r.remainingSavings>5000, warn:r.remainingSavings>0,
-      passThreshold: 0, warnThreshold: 0, ratio: 0,
-      note: r.remainingSavings<0 ? "Insufficient savings" : `${fmt(r.remainingSavings)} remaining after costs`,
-    },
-  ];
+  // stressTests reads directly from assessRisk output — single source of truth
+  const stressTests = (r.riskTests || []).map(t => ({
+    label: t.label,
+    pass: t.level === "SAFE",
+    warn: t.level === "STRETCH",
+    note: t.note,
+    passThreshold: t.passThreshold,
+    ratio: t.ratio,
+  }));
 
   return (
     <div>
@@ -1531,7 +1585,7 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
         const shareText = `${scenarioEmoji} ${scenarioLabel}\n\n${shareBody}\n\nRun your own scenario:\ncanweaffordthis.com`;
         const handleShare = () => {
           if(navigator.share) {
-            navigator.share({ title: scenarioLabel, text: shareText, url: "https://canweaffordthis.com" })
+            navigator.share({ title: scenarioLabel, text: shareText })
               .then(()=>{ setShared(true); setTimeout(()=>setShared(false), 3000); })
               .catch(()=>{});
           } else {
