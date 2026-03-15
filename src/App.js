@@ -2178,7 +2178,6 @@ export default function App() {
   const hasIncome = b.annualGross > 0 || b.netIncome > 0;
   const scenarioReady = useMemo(()=>isScenarioReady(sc),[sc]);
   const ready=useMemo(()=>isReady(b,sc),[b,sc]);
-  const th=THEME[TABS[tab]];
   return (
     <>
       <style>{`
