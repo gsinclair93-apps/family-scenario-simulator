@@ -532,10 +532,12 @@ function Confetti({ active }) {
 
 // ─── THEME ────────────────────────────────────────────────────────────────────
 const THEME = {
-  baseline:{ solid:"#D97706",light:"#FFFBEB",border:"#FCD34D",text:"#fff",dim:"#92400E",glow:"#D9770644",emoji:"📋",label:"Baseline" },
+  baseline:{ solid:"#34D399",light:"#F0FDF4",border:"#6EE7B7",text:"#fff",dim:"#065F46",glow:"#34D39944",emoji:"📋",label:"Baseline" },
   scenario:{ solid:"#4338CA",light:"#EEF2FF",border:"#A5B4FC",text:"#fff",dim:"#312E81",glow:"#4338CA44",emoji:"🔍",label:"Scenario" },
-  results: { solid:"#059669",light:"#ECFDF5",border:"#6EE7B7",text:"#fff",dim:"#064E3B",glow:"#05966944",emoji:"📊",label:"Results"  },
+  results: { solid:"#7C3AED",light:"#F5F3FF",border:"#C4B5FD",text:"#fff",dim:"#4C1D95",glow:"#7C3AED44",emoji:"📊",label:"Results"  },
 };
+// Option B nav accent — indigo for forward momentum regardless of active tab
+const NAV_ACCENT = { solid:"#4338CA", glow:"#4338CA44", text:"#fff" };
 const TABS = ["baseline","scenario","results"];
 const RISK_CFG = {
   SAFE:    { label:"Safe",    color:"#166534", bg:"#dcfce7", border:"#86efac", icon:"✦" },
@@ -646,7 +648,7 @@ function TwoCol({ children }) { return <div style={{ display:"grid",gridTemplate
 function EstBox({ text }) {
   return <div style={{ padding:"10px 13px",background:"#F3F4F6",borderRadius:10,fontFamily:"monospace",fontSize:12.5,color:"#6B7280",fontWeight:600 }}>{text}</div>;
 }
-function InfoBox({ text, color="#92400E", bg="#FFFBEB", border="#FCD34D" }) {
+function InfoBox({ text, color="#065F46", bg="#F0FDF4", border="#6EE7B7" }) {
   return <div style={{ padding:"10px 13px",background:bg,border:`1px solid ${border}`,borderRadius:10,fontSize:11.5,color,fontWeight:700,lineHeight:1.5 }}>{text}</div>;
 }
 
@@ -823,7 +825,7 @@ function BaselineTab({ b, setB }) {
                 ))}
                 <div style={{ fontSize:11,color:THEME.baseline.dim,fontWeight:700 }}>Effective: {pct(taxResult.effectiveRate)}</div>
               </div>
-              <div style={{ fontSize:10,color:"#B45309",marginTop:8,fontStyle:"italic" }}>Based on 2024 federal brackets + standard deduction. State rate is approximate.</div>
+              <div style={{ fontSize:10,color:"#6B7280",marginTop:8,fontStyle:"italic" }}>Based on 2024 federal brackets + standard deduction. State rate is approximate.</div>
             </div>}
           </>
         ) : (
@@ -1553,7 +1555,7 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
       ) : (
       <div style={{ background:"#FFFBEB",border:"2px solid #FCD34D",borderRadius:20,padding:"22px 24px 20px",marginBottom:14,
         opacity:mounted?1:0,transform:mounted?"none":"scale(0.96)",transition:"all 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}>
-        <div style={{ fontSize:10,fontWeight:800,color:"#D97706",opacity:0.7,letterSpacing:"0.16em",textTransform:"uppercase",marginBottom:8 }}>Your Timeline</div>
+        <div style={{ fontSize:10,fontWeight:800,color:"#92400E",opacity:0.7,letterSpacing:"0.16em",textTransform:"uppercase",marginBottom:8 }}>Your Timeline</div>
         <div style={{ fontSize:22,fontWeight:900,color:"#D97706",lineHeight:1,letterSpacing:"-0.02em",marginBottom:10 }}>🎯 {fmt(r.goal)}</div>
         <div style={{ fontSize:14,color:"#92400E",fontWeight:500,lineHeight:1.6,borderTop:"1px solid #FDE68A",paddingTop:12 }}>{summary}</div>
       </div>
@@ -1672,9 +1674,9 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
 
       {/* Savings-specific callout */}
       {r.type==="savings"&&(
-        <div style={{ background:"#FFFBEB",border:"1.5px solid #FCD34D",borderRadius:14,padding:"18px 20px",marginBottom:14,
+        <div style={{ background:"#F0FDF4",border:"1.5px solid #6EE7B7",borderRadius:14,padding:"18px 20px",marginBottom:14,
           opacity:mounted?1:0,transform:mounted?"none":"translateY(8px)",transition:"all 0.4s ease 0.1s" }}>
-          <div style={{ fontSize:10,fontWeight:800,color:"#D97706",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:14 }}>Savings Breakdown</div>
+          <div style={{ fontSize:10,fontWeight:800,color:"#92400E",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:14 }}>Savings Breakdown</div>
 
           {/* Target months mode */}
           {r.targetMonths > 0 && r.requiredMonthly !== null && (
@@ -1703,14 +1705,14 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
 
           {/* No baseline income entered */}
           {r.noBaseline && (
-            <div style={{ padding:"14px",background:"#FEF9C3",borderRadius:10,fontSize:13,fontWeight:700,color:"#92400E",textAlign:"center" }}>
+            <div style={{ padding:"14px",background:"#FFFBEB",borderRadius:10,fontSize:13,fontWeight:700,color:"#92400E",textAlign:"center" }}>
               👆 Add your income in the Baseline tab to see your savings timeline
             </div>
           )}
           {(!r.targetMonths || r.targetMonths === 0) && !r.noBaseline && r.timelines.length > 0 && (
             <div>
               {r.atSurplusMonths&&(
-                <div style={{ marginBottom:14,padding:"10px 14px",background:"#FEF9C3",borderRadius:10,fontSize:13,fontWeight:700,color:"#92400E" }}>
+                <div style={{ marginBottom:14,padding:"10px 14px",background:"#FFFBEB",borderRadius:10,fontSize:13,fontWeight:700,color:"#92400E" }}>
                   At your full surplus of {fmt(r.monthlySurplus)}/mo → {r.atSurplusMonths} months
                 </div>
               )}
@@ -2201,7 +2203,7 @@ export default function App() {
         .verdict-risky{--verdict-glow:#DC262644;--verdict-ring:#FCA5A522;}
       `}</style>
       <div style={{ minHeight:"100vh",padding:"52px 16px 64px",
-        background:"radial-gradient(ellipse at 20% 0%,#e8e4ff 0%,transparent 60%),radial-gradient(ellipse at 80% 100%,#dff4ec 0%,transparent 60%),#F0F0EE",
+        background:"radial-gradient(ellipse at 20% 0%,#d1fae5 0%,transparent 60%),radial-gradient(ellipse at 80% 100%,#e0e7ff 0%,transparent 60%),#F0F0EE",
         color:"#111" }}>
         <div style={{ maxWidth:520,margin:"0 auto" }}>
           {/* Header */}
@@ -2258,9 +2260,9 @@ export default function App() {
             {tab>0?<button onClick={()=>setTab(t=>t-1)} style={{ background:"#fff",border:"1.5px solid #E5E7EB",borderRadius:11,padding:"10px 18px",fontSize:12.5,fontWeight:800,color:"#9CA3AF",cursor:"pointer",transition:"all 0.15s" }}
               onMouseOver={e=>e.currentTarget.style.borderColor="#9CA3AF"} onMouseOut={e=>e.currentTarget.style.borderColor="#E5E7EB"}>← Back</button>:<div/>}
             <div style={{ display:"flex",gap:6 }}>
-              {TABS.map((_,i)=><button key={i} onClick={()=>setTab(i)} style={{ width:tab===i?26:7,height:7,borderRadius:99,background:tab===i?THEME[TABS[tab]].solid:"#E5E7EB",border:"none",cursor:"pointer",padding:0,transition:"all 0.22s" }} />)}
+              {TABS.map((_,i)=><button key={i} onClick={()=>setTab(i)} style={{ width:tab===i?26:7,height:7,borderRadius:99,background:tab===i?NAV_ACCENT.solid:"#E5E7EB",border:"none",cursor:"pointer",padding:0,transition:"all 0.22s" }} />)}
             </div>
-            {tab<2?<button onClick={()=>setTab(t=>t+1)} style={{ background:th.solid,color:th.text,border:"none",borderRadius:11,padding:"10px 20px",fontSize:12.5,fontWeight:900,cursor:"pointer",boxShadow:`0 4px 14px ${th.glow}`,transition:"all 0.15s" }}
+            {tab<2?<button onClick={()=>setTab(t=>t+1)} style={{ background:NAV_ACCENT.solid,color:NAV_ACCENT.text,border:"none",borderRadius:11,padding:"10px 20px",fontSize:12.5,fontWeight:900,cursor:"pointer",boxShadow:`0 4px 14px ${NAV_ACCENT.glow}`,transition:"all 0.15s" }}
               onMouseOver={e=>e.currentTarget.style.opacity="0.88"} onMouseOut={e=>e.currentTarget.style.opacity="1"}>
               {tab===0?"Set Scenario →":"See Results →"}</button>:<div/>}
           </div>
