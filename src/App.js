@@ -1589,7 +1589,7 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
         const shareText = `${scenarioEmoji} ${scenarioLabel}\n\n${shareBody}\n\nRun your own scenario:\ncanweaffordthis.com`;
         const handleShare = () => {
           if(navigator.share) {
-            navigator.share({ title: scenarioLabel, text: shareText })
+            navigator.share({ title: scenarioLabel, text: shareText, url: "https://canweaffordthis.com" })
               .then(()=>{ setShared(true); setTimeout(()=>setShared(false), 3000); })
               .catch(()=>{});
           } else {
