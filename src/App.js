@@ -1077,7 +1077,9 @@ function ScenarioHome({ sc, setSc, b, setB }) {
       </div>
 
       <TwoCol>
-        <Field label="Interest Rate"><Num value={sc.interestRate} onChange={set("interestRate")} suffix="% APR" accentColor={ac} /></Field>
+        <Field label="Interest Rate" hint={sc.interestRate ? "current national avg — update with your quote" : "enter your rate or wait for auto-fill"}>
+          <Num value={sc.interestRate} onChange={set("interestRate")} suffix="% APR" accentColor={ac} />
+        </Field>
         <Field label="Loan Term"><Num value={sc.loanTerm} onChange={set("loanTerm")} suffix="yrs" accentColor={ac} /></Field>
       </TwoCol>
       <Field label="Property Tax"><Num value={sc.annualTax} onChange={set("annualTax")} prefix="$" suffix="/yr" accentColor={ac} /></Field>
@@ -2135,7 +2137,7 @@ const DEFAULT_B = {
 const DEFAULT_SC_CLEAN = {
   type:"home",
   // home
-  homePrice:0, downPayment:0, downPaymentPct:0, interestRate:6.8, loanTerm:30, annualTax:0,
+  homePrice:0, downPayment:0, downPaymentPct:0, interestRate:"", loanTerm:30, annualTax:0,
   annualInsurance:0, useDefaultIns:true, closingCosts:0, useDefaultClose:true, pmiRate:0.85, useDefaultPmi:true, hoaMonthly:0,
   // car
   carMode:"buy", msrp:0, carDownPayment:0, tradeIn:0, carRate:6.9, carTerm:5,
@@ -2157,6 +2159,19 @@ export default function App() {
   const setTab = (v) => { const next = typeof v === "function" ? v(tab) : v; setTabRaw(next); window.scrollTo({top:0,behavior:"instant"}); };
   const [b,setB]    =useState(DEFAULT_B);
   const [sc,setSc]  =useState(DEFAULT_SC_CLEAN);
+
+  // Fetch current 30-year mortgage rate from FRED on mount
+  // Falls back to empty string (user must input) if fetch fails
+  useEffect(() => {
+    fetch("/api/mortgage-rate")
+      .then(r => r.json())
+      .then(data => {
+        if(data.rate && !isNaN(data.rate)) {
+          setSc(prev => prev.interestRate === "" ? { ...prev, interestRate: parseFloat(data.rate.toFixed(2)) } : prev);
+        }
+      })
+      .catch(() => {}); // silent fail — field stays empty
+  }, []);
   const r=useMemo(()=>runCalcs(b,sc),[b,sc]);
   const hasIncome = b.annualGross > 0 || b.netIncome > 0;
   const scenarioReady = useMemo(()=>isScenarioReady(sc),[sc]);
