@@ -532,7 +532,7 @@ function Confetti({ active }) {
 
 // ─── THEME ────────────────────────────────────────────────────────────────────
 const THEME = {
-  baseline:{ solid:"#34D399",light:"#F0FDF4",border:"#6EE7B7",text:"#fff",dim:"#065F46",glow:"#34D39944",emoji:"📋",label:"Baseline" },
+  baseline:{ solid:"#D97706",light:"#FFFBEB",border:"#FCD34D",text:"#fff",dim:"#92400E",glow:"#D9770644",emoji:"📋",label:"Baseline" },
   scenario:{ solid:"#4338CA",light:"#EEF2FF",border:"#A5B4FC",text:"#fff",dim:"#312E81",glow:"#4338CA44",emoji:"🔍",label:"Scenario" },
   results: { solid:"#7C3AED",light:"#F5F3FF",border:"#C4B5FD",text:"#fff",dim:"#4C1D95",glow:"#7C3AED44",emoji:"📊",label:"Results"  },
 };
@@ -648,7 +648,7 @@ function TwoCol({ children }) { return <div style={{ display:"grid",gridTemplate
 function EstBox({ text }) {
   return <div style={{ padding:"10px 13px",background:"#F3F4F6",borderRadius:10,fontFamily:"monospace",fontSize:12.5,color:"#6B7280",fontWeight:600 }}>{text}</div>;
 }
-function InfoBox({ text, color="#065F46", bg="#F0FDF4", border="#6EE7B7" }) {
+function InfoBox({ text, color="#92400E", bg="#FFFBEB", border="#FCD34D" }) {
   return <div style={{ padding:"10px 13px",background:bg,border:`1px solid ${border}`,borderRadius:10,fontSize:11.5,color,fontWeight:700,lineHeight:1.5 }}>{text}</div>;
 }
 
@@ -825,7 +825,7 @@ function BaselineTab({ b, setB }) {
                 ))}
                 <div style={{ fontSize:11,color:THEME.baseline.dim,fontWeight:700 }}>Effective: {pct(taxResult.effectiveRate)}</div>
               </div>
-              <div style={{ fontSize:10,color:"#6B7280",marginTop:8,fontStyle:"italic" }}>Based on 2024 federal brackets + standard deduction. State rate is approximate.</div>
+              <div style={{ fontSize:10,color:"#B45309",marginTop:8,fontStyle:"italic" }}>Based on 2024 federal brackets + standard deduction. State rate is approximate.</div>
             </div>}
           </>
         ) : (
@@ -950,8 +950,8 @@ function BaselineHealthCheck({ b }) {
   const checks = [
     {
       label: "Housing cost",
-      pass: housingR <= 0.28, warn: housingR <= 0.35,
-      note: net > 0 ? `${pct(housingR)} of take-home — target ≤ 28%` : "Enter income to calculate",
+      pass: housingR <= 0.32, warn: housingR <= 0.38,
+      note: net > 0 ? `${pct(housingR)} of take-home — target ≤ 32%` : "Enter income to calculate",
     },
     {
       label: "Debt load",
@@ -960,24 +960,24 @@ function BaselineHealthCheck({ b }) {
     },
     {
       label: "Monthly surplus",
-      pass: surplus > net * 0.30, warn: surplus > net * 0.15,
+      pass: surplus > net * 0.15, warn: surplus > net * 0.05,
       note: net > 0
         ? surplus < 0 ? "Expenses exceed income"
-          : surplus < net * 0.30
-            ? `${fmt(surplus)}/mo remaining — 30% of take-home (${fmt(net*0.30)}) recommended for discretionary spending`
+          : surplus < net * 0.15
+            ? `${fmt(surplus)}/mo remaining — below the 15% healthy floor`
             : `${fmt(surplus)}/mo remaining`
         : "Enter income to calculate",
     },
     {
       label: "Emergency runway",
-      pass: runway >= 6, warn: runway >= 3,
+      pass: runway >= 5, warn: runway >= 3,
       note: total > 0 ? `${mths(runway)} of expenses in savings` : "Enter expenses to calculate",
     },
   ];
 
-  const flags  = checks.filter(c => !c.pass && !c.warn).length;
-  const warns  = checks.filter(c => !c.pass && c.warn).length;
-  const overall = flags > 0 ? "RISKY" : warns > 1 ? "STRETCH" : "SAFE";
+  const riskyCount  = checks.filter(c => !c.pass && !c.warn).length;
+  const stretchCount = checks.filter(c => !c.pass && c.warn).length;
+  const overall = riskyCount > 0 ? "RISKY" : stretchCount >= 2 ? "STRETCH" : stretchCount === 1 ? "SAFE" : "SAFE";
   const oc = overall === "SAFE" ? "#059669" : overall === "STRETCH" ? "#D97706" : "#DC2626";
   const ob = overall === "SAFE" ? "#ECFDF5" : overall === "STRETCH" ? "#FFFBEB" : "#FEF2F2";
   const obdr = overall === "SAFE" ? "#6EE7B7" : overall === "STRETCH" ? "#FCD34D" : "#FCA5A5";
@@ -2202,7 +2202,7 @@ export default function App() {
         .verdict-risky{--verdict-glow:#DC262644;--verdict-ring:#FCA5A522;}
       `}</style>
       <div style={{ minHeight:"100vh",padding:"52px 16px 64px",
-        background:"radial-gradient(ellipse at 20% 0%,#d1fae5 0%,transparent 60%),radial-gradient(ellipse at 80% 100%,#e0e7ff 0%,transparent 60%),#F0F0EE",
+        background:"radial-gradient(ellipse at 20% 0%,#e8e4ff 0%,transparent 60%),radial-gradient(ellipse at 80% 100%,#dff4ec 0%,transparent 60%),#F0F0EE",
         color:"#111" }}>
         <div style={{ maxWidth:520,margin:"0 auto" }}>
           {/* Header */}
