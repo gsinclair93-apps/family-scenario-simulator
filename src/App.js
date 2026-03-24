@@ -2203,11 +2203,11 @@ export default function App() {
       `}</style>
       <div style={{ minHeight:"100vh", color:"#111" }}>
         {/* ── MINT BANNER HEADER ── */}
-        <div style={{ background:"#34D399",paddingTop:16,paddingBottom:18,paddingLeft:16,paddingRight:16,
+        <div style={{ background:"#34D399",paddingTop:20,paddingBottom:22,paddingLeft:16,paddingRight:16,
           boxShadow:"0 2px 12px rgba(52,211,153,0.25)" }}>
           <div style={{ maxWidth:520,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center" }}>
             <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-              <img src="/logo-icon.png" alt="Can We Afford This?" style={{ width:52,height:52,objectFit:"contain",filter:"brightness(0) invert(1)",opacity:0.92 }} />
+              <img src="/logo-icon.png" alt="Can We Afford This?" style={{ width:110,height:110,objectFit:"contain",filter:"brightness(0) invert(1)",opacity:0.92 }} />
               <h1 style={{ fontSize:17,fontWeight:900,color:"#fff",letterSpacing:"-0.03em",lineHeight:1.2 }}>Family Scenario<br />Simulator</h1>
             </div>
             <div style={{ display:"flex",alignItems:"center",gap:7 }}>
