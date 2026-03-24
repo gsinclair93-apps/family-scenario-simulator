@@ -2201,31 +2201,35 @@ export default function App() {
         .verdict-stretch{--verdict-glow:#D9770644;--verdict-ring:#FCD34D22;}
         .verdict-risky{--verdict-glow:#DC262644;--verdict-ring:#FCA5A522;}
       `}</style>
-      <div style={{ minHeight:"100vh",padding:"52px 16px 64px",
-        background:"radial-gradient(ellipse at 20% 0%,#e8e4ff 0%,transparent 60%),radial-gradient(ellipse at 80% 100%,#dff4ec 0%,transparent 60%),#F0F0EE",
-        color:"#111" }}>
-        <div style={{ maxWidth:520,margin:"0 auto" }}>
-          {/* Header */}
-          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:28 }}>
+      <div style={{ minHeight:"100vh", color:"#111" }}>
+        {/* ── MINT BANNER HEADER ── */}
+        <div style={{ background:"#34D399",paddingTop:16,paddingBottom:18,paddingLeft:16,paddingRight:16,
+          boxShadow:"0 2px 12px rgba(52,211,153,0.25)" }}>
+          <div style={{ maxWidth:520,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center" }}>
             <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-              <img src="/logo-icon.png" alt="Can We Afford This?" style={{ width:130,height:130,objectFit:"contain" }} />
-              <h1 style={{ fontSize:18,fontWeight:900,color:"#111",letterSpacing:"-0.03em",lineHeight:1.2 }}>Family Scenario<br />Simulator</h1>
+              <img src="/logo-icon.png" alt="Can We Afford This?" style={{ width:52,height:52,objectFit:"contain",filter:"brightness(0) invert(1)",opacity:0.92 }} />
+              <h1 style={{ fontSize:17,fontWeight:900,color:"#fff",letterSpacing:"-0.03em",lineHeight:1.2 }}>Family Scenario<br />Simulator</h1>
             </div>
-            <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+            <div style={{ display:"flex",alignItems:"center",gap:7 }}>
               <a href="https://blog.canweaffordthis.com" target="_blank" rel="noopener noreferrer"
-                style={{ fontSize:12,fontWeight:800,color:"#6B7280",background:"#fff",border:"1.5px solid #E5E7EB",borderRadius:10,padding:"7px 14px",cursor:"pointer",transition:"all 0.15s",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",textDecoration:"none" }}>
+                style={{ fontSize:11.5,fontWeight:800,color:"#fff",background:"rgba(0,0,0,0.12)",border:"1.5px solid rgba(255,255,255,0.25)",borderRadius:10,padding:"6px 12px",cursor:"pointer",transition:"all 0.15s",textDecoration:"none" }}>
                 📝 Blog
               </a>
               <button onClick={()=>{ setB(DEFAULT_B); setSc(DEFAULT_SC_CLEAN); setTab(0); }}
-                style={{ fontSize:12,fontWeight:800,color:"#6B7280",background:"#fff",border:"1.5px solid #E5E7EB",borderRadius:10,padding:"7px 14px",cursor:"pointer",transition:"all 0.15s",boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}
-                onMouseOver={e=>{e.currentTarget.style.borderColor="#9CA3AF";e.currentTarget.style.color="#374151";e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,0.1)";}}
-                onMouseOut={e=>{e.currentTarget.style.borderColor="#E5E7EB";e.currentTarget.style.color="#6B7280";e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,0.06)";}}>
+                style={{ fontSize:11.5,fontWeight:800,color:"#fff",background:"rgba(0,0,0,0.12)",border:"1.5px solid rgba(255,255,255,0.25)",borderRadius:10,padding:"6px 12px",cursor:"pointer",transition:"all 0.15s" }}
+                onMouseOver={e=>{e.currentTarget.style.background="rgba(0,0,0,0.22)";}}
+                onMouseOut={e=>{e.currentTarget.style.background="rgba(0,0,0,0.12)";}}>
                 ↺ Reset
               </button>
             </div>
           </div>
+        </div>
+        {/* ── APP BODY ── */}
+        <div style={{ background:"radial-gradient(ellipse at 20% 0%,#e8e4ff 0%,transparent 60%),radial-gradient(ellipse at 80% 100%,#dff4ec 0%,transparent 60%),#F0F0EE",
+          minHeight:"calc(100vh - 86px)",padding:"24px 16px 64px" }}>
+        <div style={{ maxWidth:520,margin:"0 auto" }}>
           {/* Intro */}
-          <p style={{ fontSize:12,color:"#9CA3AF",fontWeight:600,textAlign:"center",marginBottom:16,marginTop:-8,letterSpacing:"0.01em" }}>
+          <p style={{ fontSize:12,color:"#9CA3AF",fontWeight:600,textAlign:"center",marginBottom:16,marginTop:0,letterSpacing:"0.01em" }}>
             Simulate how major life decisions impact your real monthly finances.
           </p>
           {/* Tabs */}
@@ -2266,6 +2270,7 @@ export default function App() {
               {tab===0?"Set Scenario →":"See Results →"}</button>:<div/>}
           </div>
         </div>
+        </div>{/* end app body */}
       </div>
     </>
   );
