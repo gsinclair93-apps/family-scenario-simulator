@@ -412,11 +412,11 @@ function calcSavings(b, sc) {
 function isReady(b, sc) {
   const hasIncome = b.annualGross > 0 || b.netIncome > 0;
   if(sc.type === "home")    return hasIncome && sc.homePrice > 0;
-  if(sc.type === "car")     return sc.carMode === "lease" ? sc.leaseMonthly > 0 : (sc.useKnownPayment ? sc.knownPayment > 0 : sc.msrp > 0);
-  if(sc.type === "job")     return sc.newAnnualSalary > 0;
+  if(sc.type === "car")     return hasIncome && (sc.carMode === "lease" ? sc.leaseMonthly > 0 : (sc.useKnownPayment ? sc.knownPayment > 0 : sc.msrp > 0));
+  if(sc.type === "job")     return hasIncome && sc.newAnnualSalary > 0;
   if(sc.type === "apt")     return hasIncome && sc.newRent > 0;
   if(sc.type === "daycare") return hasIncome && (sc.daycareCostPerChild > 0);
-  if(sc.type === "savings") return sc.savingsGoal > 0;
+  if(sc.type === "savings") return hasIncome && sc.savingsGoal > 0;
   return false;
 }
 
