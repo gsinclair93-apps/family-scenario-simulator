@@ -1969,19 +1969,30 @@ function LeadCapture({ sc, r, b, summary, onAddIncome }) {
     const noBaseline = !r.netIncome || r.netIncome === 0;
     lines.push(`Scenario: ${sc.type}`);
     lines.push(`Verdict: ${noBaseline ? "ESTIMATE" : r.risk}`);
-    if(summary && !noBaseline) lines.push(`Summary: ${summary}`);
-    if(r.netIncome)    lines.push(`Take-home income: $${Math.round(r.netIncome).toLocaleString()}/mo`);
-    if(r.newSurplus != null) lines.push(`Monthly surplus: $${Math.round(r.newSurplus).toLocaleString()}/mo`);
-    if(r.ratio)        lines.push(`Cost ratio: ${(r.ratio*100).toFixed(1)}%`);
-    if(r.runway)       lines.push(`Emergency runway: ${r.runway.toFixed(1)} months`);
-    if(sc.type==="home" && sc.homePrice) lines.push(`Home price: $${sc.homePrice.toLocaleString()}`);
-    if(sc.type==="home" && r.scenarioCost) lines.push(`New housing cost: $${Math.round(r.scenarioCost).toLocaleString()}/mo`);
-    if(sc.type==="car" && r.scenarioCost) lines.push(`Monthly car cost: $${Math.round(r.scenarioCost).toLocaleString()}/mo`);
-    if(sc.type==="apt" && sc.newRent) lines.push(`New rent: $${sc.newRent.toLocaleString()}/mo`);
-    if(sc.type==="daycare" && r.netDaycareCost) lines.push(`Net daycare cost: $${Math.round(r.netDaycareCost).toLocaleString()}/mo`);
-    if(sc.type==="savings" && r.goal) lines.push(`Savings goal: $${r.goal.toLocaleString()}`);
-    if(r.cashNeeded) lines.push(`Cash needed upfront: $${Math.round(r.cashNeeded).toLocaleString()}`);
-    if(r.remainingSavings != null) lines.push(`Savings after: $${Math.round(r.remainingSavings).toLocaleString()}`);
+
+    if(noBaseline && sc.type === "home") {
+      // Home cost estimate — no income entered, only show cost breakdown
+      if(sc.homePrice) lines.push(`Home price: $${sc.homePrice.toLocaleString()}`);
+      if(r.mortgage)   lines.push(`Mortgage (P&I): $${Math.round(r.mortgage).toLocaleString()}/mo`);
+      if(sc.annualTax) lines.push(`Property tax: $${Math.round(sc.annualTax/12).toLocaleString()}/mo`);
+      if(r.scenarioCost) lines.push(`Total monthly cost: $${Math.round(r.scenarioCost).toLocaleString()}/mo`);
+      if(r.cashNeeded) lines.push(`Cash needed upfront: $${Math.round(r.cashNeeded).toLocaleString()}`);
+    } else {
+      // Full results — baseline was entered
+      if(summary) lines.push(`Summary: ${summary}`);
+      if(r.netIncome)    lines.push(`Take-home income: $${Math.round(r.netIncome).toLocaleString()}/mo`);
+      if(r.newSurplus != null) lines.push(`Monthly surplus: $${Math.round(r.newSurplus).toLocaleString()}/mo`);
+      if(r.ratio)        lines.push(`Cost ratio: ${(r.ratio*100).toFixed(1)}%`);
+      if(r.runway)       lines.push(`Emergency runway: ${r.runway.toFixed(1)} months`);
+      if(sc.type==="home" && sc.homePrice) lines.push(`Home price: $${sc.homePrice.toLocaleString()}`);
+      if(sc.type==="home" && r.scenarioCost) lines.push(`Total monthly cost: $${Math.round(r.scenarioCost).toLocaleString()}/mo`);
+      if(sc.type==="car" && r.scenarioCost) lines.push(`Monthly car cost: $${Math.round(r.scenarioCost).toLocaleString()}/mo`);
+      if(sc.type==="apt" && sc.newRent) lines.push(`New rent: $${sc.newRent.toLocaleString()}/mo`);
+      if(sc.type==="daycare" && r.netDaycareCost) lines.push(`Net daycare cost: $${Math.round(r.netDaycareCost).toLocaleString()}/mo`);
+      if(sc.type==="savings" && r.goal) lines.push(`Savings goal: $${r.goal.toLocaleString()}`);
+      if(r.cashNeeded) lines.push(`Cash needed upfront: $${Math.round(r.cashNeeded).toLocaleString()}`);
+      if(r.remainingSavings != null && r.remainingSavings > 0) lines.push(`Savings after: $${Math.round(r.remainingSavings).toLocaleString()}`);
+    }
     return lines.join("\n");
   })();
 
