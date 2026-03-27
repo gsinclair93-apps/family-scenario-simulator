@@ -2021,7 +2021,7 @@ function LeadCapture({ sc, r, b, summary, onAddIncome }) {
           body: JSON.stringify({
             email,
             scenario: sc.type,
-            risk: r.risk,
+            risk: (!r.netIncome || r.netIncome === 0) && sc.type === "home" ? "ESTIMATE" : r.risk,
             results: resultsText,
             subscribe,
           }),
