@@ -10,5 +10,11 @@
       "destination": "https://blog.canweaffordthis.com/:path*",
       "permanent": true
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/roi",
+      "destination": "/roi.html"
+    }
   ]
 }

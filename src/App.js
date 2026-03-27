@@ -1954,15 +1954,19 @@ function LeadCapture({ sc, r, b }) {
     const lines = [];
     lines.push(`Scenario: ${sc.type}`);
     lines.push(`Verdict: ${r.risk}`);
+    if(summary) lines.push(`Summary: ${summary}`);
     if(r.netIncome)    lines.push(`Take-home income: $${Math.round(r.netIncome).toLocaleString()}/mo`);
     if(r.newSurplus != null) lines.push(`Monthly surplus: $${Math.round(r.newSurplus).toLocaleString()}/mo`);
     if(r.ratio)        lines.push(`Cost ratio: ${(r.ratio*100).toFixed(1)}%`);
     if(r.runway)       lines.push(`Emergency runway: ${r.runway.toFixed(1)} months`);
     if(sc.type==="home" && sc.homePrice) lines.push(`Home price: $${sc.homePrice.toLocaleString()}`);
+    if(sc.type==="home" && r.scenarioCost) lines.push(`New housing cost: $${Math.round(r.scenarioCost).toLocaleString()}/mo`);
     if(sc.type==="car" && r.scenarioCost) lines.push(`Monthly car cost: $${Math.round(r.scenarioCost).toLocaleString()}/mo`);
     if(sc.type==="apt" && sc.newRent) lines.push(`New rent: $${sc.newRent.toLocaleString()}/mo`);
     if(sc.type==="daycare" && r.netDaycareCost) lines.push(`Net daycare cost: $${Math.round(r.netDaycareCost).toLocaleString()}/mo`);
     if(sc.type==="savings" && r.goal) lines.push(`Savings goal: $${r.goal.toLocaleString()}`);
+    if(r.cashNeeded) lines.push(`Cash needed upfront: $${Math.round(r.cashNeeded).toLocaleString()}`);
+    if(r.remainingSavings != null) lines.push(`Savings after: $${Math.round(r.remainingSavings).toLocaleString()}`);
     return lines.join("\n");
   })();
 
@@ -2163,22 +2167,24 @@ export default function App() {
         </div>
         {/* ── ROI TOP BAR ── */}
         <a href="/roi" style={{ display:"block",textDecoration:"none" }}>
-          <div style={{ background:"#F5F3FF",borderBottom:"1.5px solid #DDD6FE",padding:"9px 16px",
-            display:"flex",alignItems:"center",justifyContent:"space-between",
+          <div style={{ background:"#F5F3FF",borderBottom:"1.5px solid #DDD6FE",
             boxShadow:"0 1px 6px rgba(124,58,237,0.07)" }}>
-            <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-              <span style={{ fontSize:18 }}>🏠</span>
-              <div>
-                <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:2 }}>
-                  <span style={{ background:"#7C3AED",color:"#fff",borderRadius:20,padding:"1px 7px",fontSize:9,fontWeight:900,letterSpacing:"0.05em" }}>NEW</span>
-                  <span style={{ fontSize:12,fontWeight:800,color:"#4338CA" }}>True Cost of Homeownership</span>
+            <div style={{ maxWidth:520,margin:"0 auto",padding:"9px 16px",
+              display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+              <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+                <span style={{ fontSize:18 }}>🏠</span>
+                <div>
+                  <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:2 }}>
+                    <span style={{ background:"#7C3AED",color:"#fff",borderRadius:20,padding:"1px 7px",fontSize:9,fontWeight:900,letterSpacing:"0.05em" }}>NEW</span>
+                    <span style={{ fontSize:12,fontWeight:800,color:"#4338CA" }}>True Cost of Homeownership</span>
+                  </div>
+                  <span style={{ fontSize:10.5,fontWeight:600,color:"#7C3AED" }}>What will this home really cost you over time?</span>
                 </div>
-                <span style={{ fontSize:10.5,fontWeight:600,color:"#7C3AED" }}>What will this home really cost you over time?</span>
               </div>
-            </div>
-            <div style={{ background:"#4338CA",color:"#fff",borderRadius:9,padding:"6px 13px",fontSize:11,fontWeight:900,
-              boxShadow:"0 4px 12px rgba(67,56,202,0.3)",whiteSpace:"nowrap",flexShrink:0 }}>
-              Try it →
+              <div style={{ background:"#4338CA",color:"#fff",borderRadius:9,padding:"6px 13px",fontSize:11,fontWeight:900,
+                boxShadow:"0 4px 12px rgba(67,56,202,0.3)",whiteSpace:"nowrap",flexShrink:0 }}>
+                Try it →
+              </div>
             </div>
           </div>
         </a>

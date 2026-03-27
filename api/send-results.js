@@ -50,7 +50,31 @@ export default async function handler(req) {
           </tr>`;
       }).join("");
 
-    const html = `
+    // Verdict background and border colors matching the app
+    const verdictBg    = risk === "SAFE" ? "#dcfce7" : risk === "STRETCH" ? "#fef9c3" : "#fee2e2";
+    const verdictBdr   = risk === "SAFE" ? "#86efac" : risk === "STRETCH" ? "#fde047" : "#fca5a5";
+    const verdictLabel = risk === "SAFE" ? "✦ Safe" : risk === "STRETCH" ? "◈ Stretch" : "◆ Risky";
+
+    // Summary line from results text
+    const summaryLine = (results || "").split("\n").find(l => l.startsWith("Summary:"))?.replace("Summary: ","") || "";
+
+    // Build detailed rows — skip scenario/verdict/summary lines
+    const detailRows = (results || "").split("\n")
+      .filter(Boolean)
+      .filter(l => !l.startsWith("Scenario:") && !l.startsWith("Verdict:") && !l.startsWith("Summary:"))
+      .map(line => {
+        const colonIdx = line.indexOf(": ");
+        if(colonIdx === -1) return "";
+        const label = line.substring(0, colonIdx);
+        const value = line.substring(colonIdx + 2);
+        return \`
+          <tr>
+            <td style="padding:11px 0;font-size:13px;color:#4B5563;font-weight:600;border-bottom:1px solid #F3F4F6;width:55%">\${label}</td>
+            <td style="padding:11px 0;font-size:14px;color:#111;font-weight:800;text-align:right;border-bottom:1px solid #F3F4F6;font-family:monospace">\${value}</td>
+          </tr>\`;
+      }).join("");
+
+    const html = \`
 <!DOCTYPE html>
 <html>
 <head>
@@ -60,42 +84,48 @@ export default async function handler(req) {
 <body style="margin:0;padding:0;background:#F0F0EE;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif">
   <div style="max-width:520px;margin:0 auto;padding:32px 16px">
 
-    <!-- Header -->
-    <div style="background:#34D399;border-radius:16px 16px 0 0;padding:24px 28px">
-      <div style="font-size:13px;font-weight:800;color:rgba(255,255,255,0.75);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:4px">Can We Afford This?</div>
-      <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.02em">${scenarioLabel} Results</div>
+    <!-- Mint banner header -->
+    <div style="background:#34D399;border-radius:16px 16px 0 0;padding:22px 28px 20px">
+      <div style="font-size:11px;font-weight:800;color:rgba(0,0,0,0.4);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Can We Afford This?</div>
+      <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.02em">\${scenarioLabel} Results</div>
     </div>
 
-    <!-- Verdict -->
-    <div style="background:#fff;padding:20px 28px;border-left:4px solid ${riskColor}">
-      <div style="font-size:10px;font-weight:800;color:#9CA3AF;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px">Verdict</div>
-      <div style="font-size:28px;font-weight:900;color:${riskColor};letter-spacing:-0.02em">${risk.charAt(0) + risk.slice(1).toLowerCase()}</div>
+    <!-- Verdict banner matching app style -->
+    <div style="background:\${verdictBg};border:2px solid \${verdictBdr};border-top:none;padding:20px 28px 18px">
+      <div style="font-size:9px;font-weight:800;color:\${riskColor};opacity:0.65;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:8px">Verdict</div>
+      <div style="font-size:32px;font-weight:900;color:\${riskColor};letter-spacing:-0.02em;line-height:1;margin-bottom:10px">\${verdictLabel}</div>
+      \${summaryLine ? \`<div style="font-size:13px;color:\${riskColor};opacity:0.85;font-weight:500;line-height:1.6;padding-top:10px;border-top:1px solid \${verdictBdr}">\${summaryLine}</div>\` : ""}
     </div>
 
-    <!-- Results table -->
-    <div style="background:#fff;padding:4px 28px 24px;border-radius:0 0 16px 16px;box-shadow:0 4px 20px rgba(0,0,0,0.08)">
+    <!-- Results detail card -->
+    <div style="background:#fff;border-radius:0 0 16px 16px;padding:4px 28px 24px;box-shadow:0 4px 20px rgba(0,0,0,0.07)">
+      <div style="font-size:9px;font-weight:800;color:#9CA3AF;letter-spacing:0.1em;text-transform:uppercase;padding:16px 0 4px">Monthly Cash Flow</div>
       <table style="width:100%;border-collapse:collapse">
-        ${resultRows}
+        \${detailRows}
       </table>
     </div>
 
-    <!-- CTA -->
-    <div style="text-align:center;margin-top:24px;padding:0 8px">
-      <a href="https://canweaffordthis.com" style="display:inline-block;background:#4338CA;color:#fff;text-decoration:none;padding:13px 28px;border-radius:12px;font-size:14px;font-weight:800;letter-spacing:-0.01em">
+    <!-- Stress test summary -->
+    <div style="background:#fff;border-radius:16px;padding:20px 28px;margin-top:12px;box-shadow:0 4px 20px rgba(0,0,0,0.07)">
+      <div style="font-size:9px;font-weight:800;color:#9CA3AF;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:14px">Want the full picture?</div>
+      <div style="font-size:13px;color:#4B5563;font-weight:500;line-height:1.6;margin-bottom:16px">
+        Run your scenario again to see the full stress test, before vs. after cash flow breakdown, and what you could comfortably afford.
+      </div>
+      <a href="https://canweaffordthis.com" style="display:inline-block;background:#4338CA;color:#fff;text-decoration:none;padding:12px 24px;border-radius:11px;font-size:13px;font-weight:800">
         Run another scenario →
       </a>
     </div>
 
     <!-- Footer -->
-    <div style="text-align:center;margin-top:20px;font-size:11px;color:#9CA3AF;line-height:1.6">
-      ${subscribe ? "You're subscribed to updates from canweaffordthis.com.<br/>" : ""}
+    <div style="text-align:center;margin-top:20px;font-size:11px;color:#9CA3AF;line-height:1.7">
+      \${subscribe ? "You're subscribed to updates from canweaffordthis.com.<br/>" : ""}
       Cash-flow analysis — not financial advice. Consult a financial advisor before major decisions.<br/>
-      <a href="https://canweaffordthis.com" style="color:#9CA3AF">canweaffordthis.com</a>
+      <a href="https://canweaffordthis.com" style="color:#C4C4C4;text-decoration:none">canweaffordthis.com</a>
     </div>
 
   </div>
 </body>
-</html>`;
+</html>\`;
 
     const res = await fetch(RESEND_API, {
       method: "POST",
