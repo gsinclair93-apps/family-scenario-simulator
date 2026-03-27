@@ -1944,187 +1944,124 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
 }
 
 // ─── LEAD CAPTURE ─────────────────────────────────────────────────────────────
-const LEAD_META = {
-  home: {
-    headline: "Ready to take the next step?",
-    sub: "Connect with a mortgage professional or financial advisor.",
-    partners: [
-      { label:"Get mortgage rates", icon:"🏦", url:"https://www.bankrate.com/mortgages/mortgage-rates/", tag:"Mortgage Lender" },
-      { label:"Find a financial advisor", icon:"📊", url:"https://www.nerdwallet.com/advisors", tag:"Financial Advisor" },
-      { label:"Learn about home insurance", icon:"🛡️", url:"https://www.policygenius.com/homeowners-insurance/", tag:"Insurance" },
-    ],
-  },
-  car: {
-    headline: "Want help financing your next vehicle?",
-    sub: "Compare auto loan rates or find the right coverage.",
-    partners: [
-      { label:"Compare auto loan rates", icon:"🚗", url:"https://www.bankrate.com/loans/auto-loans/", tag:"Auto Loan" },
-      { label:"Get insurance quotes", icon:"🛡️", url:"https://www.policygenius.com/auto-insurance/", tag:"Auto Insurance" },
-      { label:"Talk to a financial advisor", icon:"📊", url:"https://www.nerdwallet.com/advisors", tag:"Financial Advisor" },
-    ],
-  },
-  job: {
-    headline: "Making a career move?",
-    sub: "Helpful tools for your job search and financial planning.",
-    partners: [
-      { label:"Update your resume", icon:"📄", url:"https://www.resumebuilder.com", tag:"Resume Builder" },
-      { label:"Negotiate your offer", icon:"💼", url:"https://www.levels.fyi", tag:"Salary Data" },
-      { label:"Review your benefits", icon:"📊", url:"https://www.nerdwallet.com/advisors", tag:"Financial Advisor" },
-    ],
-  },
-  apt: {
-    headline: "Ready to make your move?",
-    sub: "Connect with resources to help with your next apartment.",
-    partners: [
-      { label:"Get renters insurance", icon:"🛡️", url:"https://www.policygenius.com/renters-insurance/", tag:"Renters Insurance" },
-      { label:"Compare apartments", icon:"🏢", url:"https://www.apartments.com", tag:"Apartment Search" },
-      { label:"Talk to a financial advisor", icon:"📊", url:"https://www.nerdwallet.com/advisors", tag:"Financial Advisor" },
-    ],
-  },
-  daycare: {
-    headline: "Planning for childcare costs?",
-    sub: "Resources to help you navigate this stage of family finances.",
-    partners: [
-      { label:"Find daycare near you", icon:"👶", url:"https://www.care.com/child-care", tag:"Childcare Search" },
-      { label:"Open a dependent care FSA", icon:"💰", url:"https://www.nerdwallet.com/article/taxes/dependent-care-fsa", tag:"Tax Savings" },
-      { label:"Talk to a financial advisor", icon:"📊", url:"https://www.nerdwallet.com/advisors", tag:"Financial Advisor" },
-    ],
-  },
-  savings: {
-    headline: "Ready to start saving?",
-    sub: "Tools to help you hit your goal faster.",
-    partners: [
-      { label:"Open a high-yield savings account", icon:"🏦", url:"https://www.bankrate.com/banking/savings/best-high-yield-interests-savings-accounts/", tag:"HYSA" },
-      { label:"Talk to a financial advisor", icon:"📊", url:"https://www.nerdwallet.com/advisors", tag:"Financial Advisor" },
-      { label:"Build an emergency fund", icon:"🛡️", url:"https://www.nerdwallet.com/article/banking/savings/how-to-build-an-emergency-fund", tag:"Emergency Fund" },
-    ],
-  },
-};
-
 function LeadCapture({ sc, r, b }) {
-  const meta = LEAD_META[sc.type] || LEAD_META.home;
+  const [email, setEmail]       = useState("");
+  const [subscribe, setSubscribe] = useState(true);
+  const [status, setStatus]     = useState("idle"); // idle | submitting | done | error
+  const [action, setAction]     = useState(null);   // "email" | "subscribe"
 
-  // Smart mortgage link routing — only applies to home purchase scenario
-  const mortgageUrl = sc.type === "home"
-    ? b?.ownsHome === true
-      ? "https://www.dpbolvw.net/click-101701917-17168360"   // existing homeowner → refi-rates
-      : "https://www.tkqlhce.com/click-101701917-17168395"   // first-time buyer (no or skipped)
-    : null;
+  const resultsText = (() => {
+    const lines = [];
+    lines.push(`Scenario: ${sc.type}`);
+    lines.push(`Verdict: ${r.risk}`);
+    if(r.netIncome)    lines.push(`Take-home income: $${Math.round(r.netIncome).toLocaleString()}/mo`);
+    if(r.newSurplus != null) lines.push(`Monthly surplus: $${Math.round(r.newSurplus).toLocaleString()}/mo`);
+    if(r.ratio)        lines.push(`Cost ratio: ${(r.ratio*100).toFixed(1)}%`);
+    if(r.runway)       lines.push(`Emergency runway: ${r.runway.toFixed(1)} months`);
+    if(sc.type==="home" && sc.homePrice) lines.push(`Home price: $${sc.homePrice.toLocaleString()}`);
+    if(sc.type==="car" && r.scenarioCost) lines.push(`Monthly car cost: $${Math.round(r.scenarioCost).toLocaleString()}/mo`);
+    if(sc.type==="apt" && sc.newRent) lines.push(`New rent: $${sc.newRent.toLocaleString()}/mo`);
+    if(sc.type==="daycare" && r.netDaycareCost) lines.push(`Net daycare cost: $${Math.round(r.netDaycareCost).toLocaleString()}/mo`);
+    if(sc.type==="savings" && r.goal) lines.push(`Savings goal: $${r.goal.toLocaleString()}`);
+    return lines.join("\n");
+  })();
 
-  const partners = meta.partners.map(p =>
-    (mortgageUrl && p.tag === "Mortgage Lender") ? { ...p, url: mortgageUrl } : p
-  );
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState("idle"); // idle | submitting | done | error
-  const [hovered, setHovered] = useState(null);
-
-  const handleSubmit = async () => {
+  const handleSubmit = async (act) => {
     if(!email || !email.includes("@")) return;
+    setAction(act);
     setStatus("submitting");
     try {
-      const res = await fetch("/api/leads", {
+      // Always log to Google Sheet
+      await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,
           scenario: sc.type,
           risk: r.risk,
+          subscribe: act === "subscribe" || subscribe,
           timestamp: new Date().toISOString(),
         }),
       });
-      if(!res.ok) throw new Error("failed");
+      // If emailing results, also call send-results
+      if(act === "email") {
+        await fetch("/api/send-results", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            scenario: sc.type,
+            risk: r.risk,
+            results: resultsText,
+            subscribe,
+          }),
+        });
+      }
       setStatus("done");
-      if(typeof window.gtag !== "undefined") window.gtag("event", "lead_captured", { scenario: sc.type, risk: r.risk });
+      if(typeof window.gtag !== "undefined") {
+        window.gtag("event", act === "email" ? "results_emailed" : "lead_captured", { scenario: sc.type, risk: r.risk });
+      }
     } catch {
       setStatus("error");
     }
   };
 
+  if(status === "done") return (
+    <div style={{ marginTop:20,background:"#ECFDF5",border:"1.5px solid #6EE7B7",borderRadius:20,padding:"24px 22px",textAlign:"center" }}>
+      <div style={{ fontSize:28,marginBottom:10 }}>{action==="email"?"📬":"🎉"}</div>
+      <div style={{ fontSize:15,fontWeight:900,color:"#065F46",marginBottom:6 }}>
+        {action==="email" ? "Results sent!" : "You're on the list!"}
+      </div>
+      <div style={{ fontSize:13,color:"#059669",fontWeight:500,lineHeight:1.6 }}>
+        {action==="email"
+          ? `Check ${email} — your scenario summary is on its way.`
+          : "We'll let you know when new scenarios and features drop."}
+      </div>
+    </div>
+  );
+
   return (
     <div style={{ marginTop:20,background:"#F9FAFB",border:"1.5px solid #E5E7EB",borderRadius:20,padding:"24px 22px" }}>
+      <div style={{ fontSize:15,fontWeight:900,color:"#111",marginBottom:4 }}>Save or share your results</div>
+      <div style={{ fontSize:13,color:"#6B7280",fontWeight:500,marginBottom:16,lineHeight:1.5 }}>
+        Email yourself a summary to review later or share with a partner.
+      </div>
 
-      {status !== "done" ? (<>
-        {/* Headline */}
-        <div style={{ marginBottom:16 }}>
-          <div style={{ fontSize:15,fontWeight:900,color:"#111",marginBottom:4 }}>{meta.headline}</div>
-          <div style={{ fontSize:13,color:"#6B7280",fontWeight:500 }}>{meta.sub}</div>
-        </div>
+      {/* Email input */}
+      <input type="email" placeholder="your@email.com" value={email}
+        onChange={e=>setEmail(e.target.value)}
+        onKeyDown={e=>e.key==="Enter"&&handleSubmit("email")}
+        style={{ width:"100%",padding:"11px 14px",border:"1.5px solid #E5E7EB",borderRadius:11,
+          fontSize:14,fontFamily:"inherit",fontWeight:500,color:"#111",
+          background:"#fff",outline:"none",marginBottom:10 }} />
 
-        {/* Partner links */}
-        <div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:20 }}>
-          {partners.map((p,i) => (
-            <a key={i} href={p.url} target="_blank" rel="noopener noreferrer"
-              onClick={()=>{ if(typeof window.gtag !== "undefined") window.gtag("event", "affiliate_click", { partner: p.label, scenario: sc.type }); }}
-              onMouseEnter={()=>setHovered(i)} onMouseLeave={()=>setHovered(null)}
-              style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",
-                background:hovered===i?"#fff":"#fff",
-                border:`1.5px solid ${hovered===i?"#A5B4FC":"#E5E7EB"}`,
-                borderRadius:12,textDecoration:"none",
-                boxShadow:hovered===i?"0 2px 12px rgba(67,56,202,0.1)":"none",
-                transform:hovered===i?"translateY(-1px)":"none",
-                transition:"all 0.15s" }}>
-              <span style={{ fontSize:20 }}>{p.icon}</span>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:13,fontWeight:800,color:"#111" }}>{p.label}</div>
-                <div style={{ fontSize:11,color:"#9CA3AF",fontWeight:600 }}>{p.tag}</div>
-              </div>
-              <span style={{ fontSize:12,color:"#A5B4FC",fontWeight:800 }}>→</span>
-            </a>
-          ))}
-        </div>
+      {/* Subscribe checkbox */}
+      <label style={{ display:"flex",alignItems:"center",gap:8,marginBottom:14,cursor:"pointer" }}>
+        <input type="checkbox" checked={subscribe} onChange={e=>setSubscribe(e.target.checked)}
+          style={{ width:15,height:15,accentColor:"#4338CA",cursor:"pointer" }} />
+        <span style={{ fontSize:12,color:"#6B7280",fontWeight:600 }}>
+          Also subscribe to updates — new scenarios, features, and financial insights.
+        </span>
+      </label>
 
-        {/* Divider */}
-        <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:16 }}>
-          <div style={{ flex:1,height:1,background:"#E5E7EB" }} />
-          <span style={{ fontSize:11,fontWeight:700,color:"#D1D5DB",textTransform:"uppercase",letterSpacing:"0.08em" }}>Stay in the loop</span>
-          <div style={{ flex:1,height:1,background:"#E5E7EB" }} />
-        </div>
-
-        {/* Email capture */}
-        <div style={{ fontSize:12,color:"#6B7280",fontWeight:500,marginBottom:10,lineHeight:1.5 }}>
-          Get notified when we add new scenarios and features. No spam, ever.
-        </div>
-        <div style={{ display:"flex",gap:8 }}>
-          <input type="email" placeholder="your@email.com" value={email}
-            onChange={e=>setEmail(e.target.value)}
-            onKeyDown={e=>e.key==="Enter"&&handleSubmit()}
-            style={{ flex:1,padding:"11px 14px",border:"1.5px solid #E5E7EB",borderRadius:11,
-              fontSize:14,fontFamily:"inherit",fontWeight:500,color:"#111",
-              background:"#fff",outline:"none" }} />
-          <button onClick={handleSubmit} disabled={status==="submitting"}
-            style={{ padding:"11px 18px",background:"#4338CA",color:"#fff",border:"none",
-              borderRadius:11,fontSize:13,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap",
-              opacity:status==="submitting"?0.7:1,transition:"all 0.15s" }}>
-            {status==="submitting"?"...":"Notify me"}
-          </button>
-        </div>
-        {status==="error"&&<div style={{ fontSize:12,color:"#DC2626",marginTop:8,fontWeight:600 }}>Something went wrong — try again.</div>}
-
-      </>) : (
-        /* Thank you state */
-        <div style={{ textAlign:"center",padding:"8px 0" }}>
-          <div style={{ fontSize:28,marginBottom:10 }}>🎉</div>
-          <div style={{ fontSize:15,fontWeight:900,color:"#111",marginBottom:6 }}>You're on the list!</div>
-          <div style={{ fontSize:13,color:"#6B7280",fontWeight:500,lineHeight:1.6,marginBottom:20 }}>
-            We'll let you know when new features drop. In the meantime, check out one of these resources:
-          </div>
-          <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-            {partners.map((p,i) => (
-              <a key={i} href={p.url} target="_blank" rel="noopener noreferrer"
-                style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",
-                  background:"#fff",border:"1.5px solid #E5E7EB",borderRadius:12,
-                  textDecoration:"none",transition:"all 0.15s" }}>
-                <span style={{ fontSize:20 }}>{p.icon}</span>
-                <div style={{ flex:1,textAlign:"left" }}>
-                  <div style={{ fontSize:13,fontWeight:800,color:"#111" }}>{p.label}</div>
-                  <div style={{ fontSize:11,color:"#9CA3AF",fontWeight:600 }}>{p.tag}</div>
-                </div>
-                <span style={{ fontSize:12,color:"#A5B4FC",fontWeight:800 }}>→</span>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Two action buttons */}
+      <div style={{ display:"flex",gap:8 }}>
+        <button onClick={()=>handleSubmit("email")} disabled={status==="submitting"}
+          style={{ flex:1,padding:"11px 0",background:"#4338CA",color:"#fff",border:"none",
+            borderRadius:11,fontSize:13,fontWeight:900,cursor:"pointer",
+            opacity:status==="submitting"&&action==="email"?0.7:1,transition:"all 0.15s",
+            fontFamily:"inherit" }}>
+          {status==="submitting"&&action==="email" ? "Sending…" : "📬 Email my results"}
+        </button>
+        <button onClick={()=>handleSubmit("subscribe")} disabled={status==="submitting"}
+          style={{ flex:1,padding:"11px 0",background:"#fff",color:"#4338CA",
+            border:"1.5px solid #A5B4FC",borderRadius:11,fontSize:13,fontWeight:900,
+            cursor:"pointer",opacity:status==="submitting"&&action==="subscribe"?0.7:1,
+            transition:"all 0.15s",fontFamily:"inherit" }}>
+          {status==="submitting"&&action==="subscribe" ? "Saving…" : "🔔 Subscribe only"}
+        </button>
+      </div>
+      {status==="error"&&<div style={{ fontSize:12,color:"#DC2626",marginTop:8,fontWeight:600 }}>Something went wrong — try again.</div>}
     </div>
   );
 }
@@ -2224,6 +2161,27 @@ export default function App() {
             </div>
           </div>
         </div>
+        {/* ── ROI TOP BAR ── */}
+        <a href="/roi" style={{ display:"block",textDecoration:"none" }}>
+          <div style={{ background:"#F5F3FF",borderBottom:"1.5px solid #DDD6FE",padding:"9px 16px",
+            display:"flex",alignItems:"center",justifyContent:"space-between",
+            boxShadow:"0 1px 6px rgba(124,58,237,0.07)" }}>
+            <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+              <span style={{ fontSize:18 }}>🏠</span>
+              <div>
+                <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:2 }}>
+                  <span style={{ background:"#7C3AED",color:"#fff",borderRadius:20,padding:"1px 7px",fontSize:9,fontWeight:900,letterSpacing:"0.05em" }}>NEW</span>
+                  <span style={{ fontSize:12,fontWeight:800,color:"#4338CA" }}>True Cost of Homeownership</span>
+                </div>
+                <span style={{ fontSize:10.5,fontWeight:600,color:"#7C3AED" }}>What will this home really cost you over time?</span>
+              </div>
+            </div>
+            <div style={{ background:"#4338CA",color:"#fff",borderRadius:9,padding:"6px 13px",fontSize:11,fontWeight:900,
+              boxShadow:"0 4px 12px rgba(67,56,202,0.3)",whiteSpace:"nowrap",flexShrink:0 }}>
+              Try it →
+            </div>
+          </div>
+        </a>
         {/* ── APP BODY ── */}
         <div style={{ background:"radial-gradient(ellipse at 20% 0%,#e8e4ff 0%,transparent 60%),radial-gradient(ellipse at 80% 100%,#dff4ec 0%,transparent 60%),#F0F0EE",
           minHeight:"calc(100vh - 86px)",padding:"24px 16px 64px" }}>
@@ -2271,6 +2229,7 @@ export default function App() {
           </div>
         </div>
         </div>{/* end app body */}
+
       </div>
     </>
   );

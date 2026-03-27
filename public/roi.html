@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+  <meta name="theme-color" content="#34D399"/>
+  <title>True Cost of Homeownership — Can We Afford This?</title>
+  <meta name="description" content="See what your home really costs over time. Factor in interest, property taxes, maintenance, and renovations — not just the purchase price."/>
+  <link rel="canonical" href="https://canweaffordthis.com/roi"/>
+  <link rel="icon" href="/favicon.ico?v=2"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2"/>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+
+  <!-- GA -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-MKRY7YWRC1"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-MKRY7YWRC1');</script>
+
+  <style>
+    *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: radial-gradient(ellipse at 20% 0%, #e8e4ff 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 100%, #dff4ec 0%, transparent 60%), #F0F0EE;
+      min-height: 100vh;
+      color: #111;
+      color-scheme: light;
+    }
+    input[type=number] { -moz-appearance: textfield; color-scheme: light; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    input, button, select { font-family: 'Nunito', sans-serif; color-scheme: light; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-thumb { background: #E0E0E0; border-radius: 4px; }
+
+    /* ── Layout ── */
+    .banner {
+      background: #34D399;
+      padding: 18px 16px 20px;
+      box-shadow: 0 2px 12px rgba(52,211,153,0.25);
+    }
+    .banner-inner {
+      max-width: 520px; margin: 0 auto;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .logo-area { display: flex; align-items: center; gap: 10px; }
+    .logo-img { width: 48px; height: 48px; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.92; }
+    .app-title { font-size: 14px; font-weight: 900; color: #fff; line-height: 1.2; letter-spacing: -0.02em; }
+    .back-btn {
+      font-size: 11.5px; font-weight: 800; color: #fff;
+      background: rgba(0,0,0,0.12); border: 1.5px solid rgba(255,255,255,0.25);
+      border-radius: 10px; padding: 6px 13px; text-decoration: none;
+      transition: background 0.15s;
+    }
+    .back-btn:hover { background: rgba(0,0,0,0.22); }
+
+    .page-body { max-width: 520px; margin: 0 auto; padding: 24px 16px 80px; }
+
+    /* ── Card ── */
+    .card {
+      background: #fff; border-radius: 22px; border: 1.5px solid #ECECEC;
+      padding: 24px 22px 28px; box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+      margin-bottom: 14px;
+    }
+    .card-title {
+      font-size: 10px; font-weight: 800; color: #9CA3AF;
+      letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 18px;
+    }
+
+    /* ── Field ── */
+    .field { margin-bottom: 16px; }
+    .field-label {
+      font-size: 11px; font-weight: 800; color: #6B7280;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      display: flex; justify-content: space-between; margin-bottom: 6px;
+    }
+    .field-hint { font-size: 10.5px; color: #C4C4C4; font-weight: 600; text-transform: none; letter-spacing: 0; }
+    .input-wrap { position: relative; }
+    .input-prefix {
+      position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+      font-size: 13px; color: #AAA; pointer-events: none; font-family: monospace;
+    }
+    .input-suffix {
+      position: absolute; right: 13px; top: 50%; transform: translateY(-50%);
+      font-size: 11px; color: #C4C4C4; pointer-events: none;
+    }
+    input[type=text], input[type=number] {
+      width: 100%; padding: 12px 44px 12px 30px;
+      border: 2px solid #E5E7EB; border-radius: 11px;
+      font-size: 15px; font-family: monospace; font-weight: 700;
+      color: #111; background: #F9FAFB; outline: none;
+      transition: all 0.14s;
+    }
+    input:focus {
+      border-color: #34D399; background: #fff;
+      box-shadow: 0 0 0 3px rgba(52,211,153,0.2);
+    }
+
+    /* ── Two col ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* ── Renovation reference ── */
+    .reno-toggle {
+      display: flex; align-items: center; gap:6px;
+      font-size: 11px; font-weight: 800; color: #4338CA;
+      cursor: pointer; margin-top: 8px; background: none; border: none;
+      padding: 0; text-decoration: underline; text-underline-offset: 3px;
+    }
+    .reno-table {
+      display: none; margin-top: 12px;
+      background: #F5F3FF; border: 1.5px solid #DDD6FE;
+      border-radius: 12px; overflow: hidden;
+    }
+    .reno-table.open { display: block; }
+    .reno-table-header {
+      padding: 9px 10px; font-size: 9px; font-weight: 800;
+      color: #4338CA; letter-spacing: 0.08em; text-transform: uppercase;
+      border-bottom: 1px solid #DDD6FE;
+      display: grid; grid-template-columns: 130px 60px 60px 80px;
+      gap: 4px; padding: 9px 10px;
+    }
+    .reno-row {
+      padding: 9px 10px; font-size: 11px; font-weight: 700; color: #374151;
+      display: grid; grid-template-columns: 130px 60px 60px 80px;
+      gap: 4px; border-bottom: 1px solid #EDE9FE;
+    }
+    .reno-row:last-child { border-bottom: none; }
+    .reno-row span { color: #6B7280; font-weight: 600; }
+    .reno-note {
+      padding: 9px 14px; font-size: 10px; color: #7C3AED; font-weight: 600;
+      font-style: italic; border-top: 1px solid #DDD6FE;
+    }
+
+    /* ── Appreciation range ── */
+    .appr-pills { display: flex; gap: 6px; margin-top: 8px; }
+    .appr-pill {
+      flex: 1; padding: 8px 6px; border-radius: 10px; border: 2px solid #E5E7EB;
+      background: #F9FAFB; text-align: center; cursor: pointer; transition: all 0.15s;
+    }
+    .appr-pill.active { border-color: #34D399; background: #F0FDF4; }
+    .appr-pill-label { font-size: 10px; font-weight: 800; color: #374151; display: block; }
+    .appr-pill-val { font-size: 12px; font-weight: 900; color: #059669; display: block; margin-top: 2px; font-family: monospace; }
+    .appr-pill.active .appr-pill-label { color: #065F46; }
+
+    /* ── CTA button ── */
+    .calc-btn {
+      width: 100%; padding: 15px; border: none; border-radius: 14px;
+      background: #4338CA; color: #fff; font-size: 15px; font-weight: 900;
+      cursor: pointer; box-shadow: 0 4px 18px rgba(67,56,202,0.35);
+      transition: all 0.15s; margin-bottom: 14px;
+      font-family: 'Nunito', sans-serif;
+    }
+    .calc-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .calc-btn:active { transform: translateY(0); }
+
+    /* ── Results ── */
+    .results { display: none; }
+    .results.visible { display: block; }
+
+    .result-card {
+      background: #fff; border-radius: 22px; border: 1.5px solid #ECECEC;
+      padding: 22px; box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+      margin-bottom: 14px;
+      animation: fadeUp 0.35s cubic-bezier(0.4,0,0.2,1) both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .ledger-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 10px 0; border-bottom: 1px solid #F3F4F6;
+      font-size: 13px;
+    }
+    .ledger-row:last-child { border-bottom: none; }
+    .ledger-label { color: #4B5563; font-weight: 600; }
+    .ledger-val { font-family: monospace; font-weight: 800; font-size: 14px; }
+    .ledger-total {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 14px 0 0; margin-top: 4px;
+      border-top: 2px solid #111;
+      font-size: 14px;
+    }
+    .ledger-total-label { font-weight: 900; color: #111; }
+    .ledger-total-val { font-family: monospace; font-weight: 900; font-size: 18px; }
+
+    /* Appreciation scenarios */
+    .scenarios-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+    .scenario-card {
+      border-radius: 16px; padding: 16px 14px; text-align: center;
+      border: 1.5px solid #E5E7EB; background: #F9FAFB;
+      animation: fadeUp 0.4s cubic-bezier(0.4,0,0.2,1) both;
+    }
+    .scenario-card.positive { border-color: #6EE7B7; background: #F0FDF4; }
+    .scenario-card.negative { border-color: #FCA5A5; background: #FEF2F2; }
+    .scenario-label { font-size: 9px; font-weight: 800; color: #9CA3AF; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+    .scenario-appr { font-size: 11px; font-weight: 700; color: #6B7280; margin-bottom: 8px; }
+    .scenario-val { font-size: 20px; font-weight: 900; font-family: monospace; line-height: 1; }
+    .scenario-sub { font-size: 10px; font-weight: 600; color: #6B7280; margin-top: 4px; }
+    .scenario-roi { font-size: 11px; font-weight: 800; margin-top: 6px; }
+
+    /* Opinionated note */
+    .opinion-box {
+      background: #EEF2FF; border: 1.5px solid #C7D2FE; border-radius: 16px;
+      padding: 20px 22px; margin-bottom: 14px;
+      animation: fadeUp 0.45s cubic-bezier(0.4,0,0.2,1) both;
+    }
+    .opinion-box h3 { font-size: 13px; font-weight: 900; color: #4338CA; margin-bottom: 10px; }
+    .opinion-box p { font-size: 12.5px; color: #4338CA; font-weight: 500; line-height: 1.7; opacity: 0.85; }
+
+    /* Disclaimer */
+    .disclaimer {
+      font-size: 10.5px; color: #D1D5DB; text-align: center;
+      line-height: 1.6; margin-top: 4px;
+      animation: fadeUp 0.5s cubic-bezier(0.4,0,0.2,1) both;
+    }
+
+    /* Intro */
+    .page-intro { text-align: center; margin-bottom: 22px; }
+    .page-intro h2 { font-size: 22px; font-weight: 900; color: #111; letter-spacing: -0.03em; margin-bottom: 6px; }
+    .page-intro p { font-size: 12.5px; color: #9CA3AF; font-weight: 600; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+  <!-- ── MINT BANNER ── -->
+  <div class="banner">
+    <div class="banner-inner">
+      <div class="logo-area">
+        <img src="/logo-icon.png" alt="Can We Afford This?" class="logo-img"/>
+        <div class="app-title">Family Scenario<br/>Simulator</div>
+      </div>
+      <a href="/" class="back-btn">← Back to simulator</a>
+    </div>
+  </div>
+
+  <!-- ── PAGE BODY ── -->
+  <div class="page-body">
+
+    <div class="page-intro">
+      <h2>True Cost of Homeownership</h2>
+      <p>The purchase price is just the beginning. See every dollar<br/>this home will cost you — and what your equity looks like at the end.</p>
+    </div>
+
+    <!-- ── INPUT CARD ── -->
+    <div class="card">
+      <div class="card-title">The Home</div>
+
+      <div class="two-col">
+        <div class="field">
+          <div class="field-label">Purchase Price</div>
+          <div class="input-wrap">
+            <span class="input-prefix">$</span>
+            <input type="text" id="purchasePrice" inputmode="decimal" placeholder="400,000"/>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label">
+            Down Payment
+            <span class="field-hint" style="cursor:pointer;color:#34D399;text-decoration:underline;text-underline-offset:2px" onclick="toggleDownMode()">
+              <span id="dp-toggle-label">switch to %</span>
+            </span>
+          </div>
+          <div class="input-wrap" id="dp-dollar-wrap">
+            <span class="input-prefix">$</span>
+            <input type="text" id="downPayment" inputmode="decimal" placeholder="80,000"/>
+          </div>
+          <div class="input-wrap" id="dp-pct-wrap" style="display:none">
+            <input type="text" id="downPaymentPct" inputmode="decimal" placeholder="20" style="padding-left:13px;padding-right:44px"/>
+            <span class="input-suffix">%</span>
+          </div>
+          <div id="dp-calc-note" style="font-size:10.5px;color:#9CA3AF;font-weight:600;margin-top:5px;display:none"></div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="field">
+          <div class="field-label">Interest Rate</div>
+          <div class="input-wrap">
+            <input type="text" id="rate" inputmode="decimal" placeholder="6.8" style="padding-left:13px;padding-right:44px"/>
+            <span class="input-suffix">% APR</span>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label">Loan Term</div>
+          <div class="input-wrap">
+            <input type="text" id="term" inputmode="decimal" placeholder="30" style="padding-left:13px;padding-right:44px"/>
+            <span class="input-suffix">yrs</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="field">
+          <div class="field-label">Annual Property Tax</div>
+          <div class="input-wrap">
+            <span class="input-prefix">$</span>
+            <input type="text" id="annualTax" inputmode="decimal" placeholder="6,000"/>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label">Years Planning to Own</div>
+          <div class="input-wrap">
+            <input type="text" id="yearsOwn" inputmode="decimal" placeholder="10" style="padding-left:13px;padding-right:44px"/>
+            <span class="input-suffix">yrs</span>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">
+          Annual Tax Increase Rate
+          <span class="field-hint">pre-filled at 2% — typical U.S. average</span>
+        </div>
+        <div class="input-wrap">
+          <input type="text" id="taxIncrease" inputmode="decimal" placeholder="2" style="padding-left:13px;padding-right:44px"/>
+          <span class="input-suffix">%/yr</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MAINTENANCE & RENOVATIONS CARD ── -->
+    <div class="card">
+      <div class="card-title">Ongoing Costs</div>
+
+      <div class="field">
+        <div class="field-label">
+          Annual Maintenance
+          <span class="field-hint">pre-filled at 1% of home value</span>
+        </div>
+        <div class="input-wrap">
+          <span class="input-prefix">$</span>
+          <input type="text" id="maintenance" inputmode="decimal" placeholder="4,000"/>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">
+          Extra Principal Payments
+          <span class="field-hint">optional — reduces interest &amp; payoff time</span>
+        </div>
+        <div class="two-col" style="margin-bottom:0">
+          <div>
+            <div style="font-size:9.5px;font-weight:800;color:#9CA3AF;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:5px">Monthly extra</div>
+            <div class="input-wrap">
+              <span class="input-prefix">$</span>
+              <input type="text" id="extraMonthly" inputmode="decimal" placeholder="0"/>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:9.5px;font-weight:800;color:#9CA3AF;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:5px">Annual lump sum</div>
+            <div class="input-wrap">
+              <span class="input-prefix">$</span>
+              <input type="text" id="extraLumpSum" inputmode="decimal" placeholder="0"/>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:#9CA3AF;font-weight:600;margin-top:6px;line-height:1.5">
+          Monthly extra is added to every payment. Annual lump sum is applied once per year (e.g. tax refund or bonus).
+        </div>
+        <div id="extra-principal-note" style="display:none;margin-top:8px;padding:9px 12px;background:#F0FDF4;border:1.5px solid #6EE7B7;border-radius:9px;font-size:11px;font-weight:700;color:#065F46;line-height:1.6"></div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">
+          Total Renovation Budget
+          <span class="field-hint">over full ownership period</span>
+        </div>
+        <div class="input-wrap">
+          <span class="input-prefix">$</span>
+          <input type="text" id="renovations" inputmode="decimal" placeholder="0"/>
+        </div>
+        <button class="reno-toggle" onclick="toggleReno()">📋 Common renovation costs reference</button>
+        <div class="reno-table" id="renoTable">
+          <div class="reno-table-header">
+            <span>Project</span>
+            <span>Low</span>
+            <span>High</span>
+            <span>Avg / sq ft</span>
+          </div>
+          <div class="reno-row">Kitchen remodel <span>$15,000</span><span>$80,000</span><span>$150–$250</span></div>
+          <div class="reno-row">Bathroom remodel <span>$8,000</span><span>$35,000</span><span>$120–$200</span></div>
+          <div class="reno-row">Basement finish <span>$20,000</span><span>$75,000</span><span>$30–$60</span></div>
+          <div class="reno-row">Roof replacement <span>$8,000</span><span>$25,000</span><span>—</span></div>
+          <div class="reno-row">HVAC system <span>$6,000</span><span>$15,000</span><span>—</span></div>
+          <div class="reno-row">Windows (full home) <span>$8,000</span><span>$24,000</span><span>—</span></div>
+          <div class="reno-row">Flooring (full home) <span>$5,000</span><span>$20,000</span><span>$3–$12</span></div>
+          <div class="reno-row">Deck / patio <span>$4,000</span><span>$20,000</span><span>$15–$35</span></div>
+          <div class="reno-note">📍 National averages — costs vary significantly by region. Get local quotes for accurate planning.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── APPRECIATION CARD ── -->
+    <div class="card">
+      <div class="card-title">Home Appreciation Assumption</div>
+      <p style="font-size:12px;color:#6B7280;font-weight:600;margin-bottom:12px;line-height:1.6">
+        We'll show your results across three scenarios. Historical U.S. average is around 3–4%/year, though this varies significantly by location and market conditions.
+      </p>
+      <div class="appr-pills">
+        <div class="appr-pill" id="pill-conservative" onclick="selectAppr('conservative')">
+          <span class="appr-pill-label">Conservative</span>
+          <span class="appr-pill-val">2%/yr</span>
+        </div>
+        <div class="appr-pill active" id="pill-expected" onclick="selectAppr('expected')">
+          <span class="appr-pill-label">Expected</span>
+          <span class="appr-pill-val">3.5%/yr</span>
+        </div>
+        <div class="appr-pill" id="pill-optimistic" onclick="selectAppr('optimistic')">
+          <span class="appr-pill-label">Optimistic</span>
+          <span class="appr-pill-val">5%/yr</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="calc-btn" onclick="calculate()">Calculate True Cost →</button>
+
+    <!-- ── RESULTS ── -->
+    <div class="results" id="results">
+
+      <!-- Ledger -->
+      <div class="result-card">
+        <div class="card-title">Your All-In Cost Ledger</div>
+        <div class="ledger-row">
+          <span class="ledger-label">Purchase price</span>
+          <span class="ledger-val" id="r-purchase"></span>
+        </div>
+        <div class="ledger-row">
+          <span class="ledger-label">Total interest paid</span>
+          <span class="ledger-val" id="r-interest" style="color:#DC2626"></span>
+        </div>
+        <div class="ledger-row">
+          <span class="ledger-label">Property taxes paid</span>
+          <span class="ledger-val" id="r-taxes" style="color:#DC2626"></span>
+        </div>
+        <div class="ledger-row">
+          <span class="ledger-label">Maintenance costs</span>
+          <span class="ledger-val" id="r-maintenance" style="color:#DC2626"></span>
+        </div>
+        <div class="ledger-row" id="r-reno-row">
+          <span class="ledger-label">Renovations</span>
+          <span class="ledger-val" id="r-renovations" style="color:#DC2626"></span>
+        </div>
+        <div class="ledger-row" id="r-balance-row" style="display:none">
+          <span class="ledger-label" style="display:flex;align-items:center;gap:6px">
+            Remaining loan balance
+            <span style="font-size:9px;background:#FEF3C7;color:#92400E;border-radius:4px;padding:1px 5px;font-weight:800">deducted at sale</span>
+          </span>
+          <span class="ledger-val" id="r-balance" style="color:#D97706"></span>
+        </div>
+        <div class="ledger-total">
+          <span class="ledger-total-label">Total spent</span>
+          <span class="ledger-total-val" id="r-total"></span>
+        </div>
+      </div>
+
+      <!-- Equity + Net Position across 3 scenarios -->
+      <div class="card-title" style="margin-bottom:10px;padding-left:4px">Net Position at Sale — Three Scenarios</div>
+      <div class="scenarios-grid">
+        <div class="scenario-card" id="sc-conservative">
+          <div class="scenario-label">Conservative</div>
+          <div class="scenario-appr">2%/yr appreciation</div>
+          <div class="scenario-home-val" id="sc-homeval-conservative" style="font-size:11px;font-weight:700;color:#6B7280;margin-bottom:6px"></div>
+          <div class="scenario-val" id="sc-val-conservative"></div>
+          <div class="scenario-sub" id="sc-sub-conservative"></div>
+          <div class="scenario-roi" id="sc-roi-conservative"></div>
+        </div>
+        <div class="scenario-card" id="sc-expected">
+          <div class="scenario-label">Expected</div>
+          <div class="scenario-appr">3.5%/yr appreciation</div>
+          <div class="scenario-home-val" id="sc-homeval-expected" style="font-size:11px;font-weight:700;color:#6B7280;margin-bottom:6px"></div>
+          <div class="scenario-val" id="sc-val-expected"></div>
+          <div class="scenario-sub" id="sc-sub-expected"></div>
+          <div class="scenario-roi" id="sc-roi-expected"></div>
+        </div>
+        <div class="scenario-card" id="sc-optimistic">
+          <div class="scenario-label">Optimistic</div>
+          <div class="scenario-appr">5%/yr appreciation</div>
+          <div class="scenario-home-val" id="sc-homeval-optimistic" style="font-size:11px;font-weight:700;color:#6B7280;margin-bottom:6px"></div>
+          <div class="scenario-val" id="sc-val-optimistic"></div>
+          <div class="scenario-sub" id="sc-sub-optimistic"></div>
+          <div class="scenario-roi" id="sc-roi-optimistic"></div>
+        </div>
+      </div>
+
+      <!-- Opinionated note -->
+      <div class="opinion-box">
+        <h3>📌 A note on what these numbers don't capture</h3>
+        <p>
+          These figures show the financial return on your home as a pure investment — but homeownership is much more than that. A home is a forced savings account that builds equity with every mortgage payment. It's a fixed cost in a world of rising rents. It's roots, stability, and a foundation for your family. For many households, the intangible value of owning — the ability to renovate, to plant a garden, to raise children in a place you can call yours — is worth more than any spreadsheet can show. Use this calculator to go in with clear eyes, not to talk yourself out of a decision that's right for your life.
+        </p>
+      </div>
+
+      <p class="disclaimer">
+        All figures are estimates based on your inputs and assumed appreciation rates.<br/>
+
+        Consult a financial advisor before major real estate decisions.
+      </p>
+    </div>
+
+  </div><!-- end page-body -->
+
+  <script>
+    const fmt = (n) => new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits:0 }).format(n);
+
+    // ── Down payment mode toggle ──
+    let dpMode = 'dollar'; // 'dollar' or 'pct'
+    function toggleDownMode() {
+      const price = parseFloat(document.getElementById('purchasePrice').value.replace(/,/g,'')) || 0;
+      dpMode = dpMode === 'dollar' ? 'pct' : 'dollar';
+      const isDollar = dpMode === 'dollar';
+      document.getElementById('dp-dollar-wrap').style.display = isDollar ? 'block' : 'none';
+      document.getElementById('dp-pct-wrap').style.display    = isDollar ? 'none'  : 'block';
+      document.getElementById('dp-toggle-label').textContent  = isDollar ? 'switch to %' : 'switch to $';
+      // Convert value between modes
+      if(!isDollar && price > 0) {
+        const dollarVal = parseFloat(document.getElementById('downPayment').value.replace(/,/g,'')) || 0;
+        if(dollarVal > 0) document.getElementById('downPaymentPct').value = ((dollarVal/price)*100).toFixed(1);
+      } else if(isDollar && price > 0) {
+        const pctVal = parseFloat(document.getElementById('downPaymentPct').value) || 0;
+        if(pctVal > 0) document.getElementById('downPayment').value = Math.round(price * pctVal / 100).toLocaleString('en-US');
+      }
+      updateDpNote(price);
+    }
+
+    function getDownPayment(price) {
+      if(dpMode === 'pct') {
+        const pct = parseFloat(document.getElementById('downPaymentPct').value) || 0;
+        return price * pct / 100;
+      }
+      return parseFloat(document.getElementById('downPayment').value.replace(/,/g,'')) || 0;
+    }
+
+    function updateDpNote(price) {
+      const note = document.getElementById('dp-calc-note');
+      if(dpMode === 'pct' && price > 0) {
+        const pct = parseFloat(document.getElementById('downPaymentPct').value) || 0;
+        const dollarAmt = price * pct / 100;
+        note.textContent = dollarAmt > 0 ? `= ${fmt(dollarAmt)}` : '';
+        note.style.display = dollarAmt > 0 ? 'block' : 'none';
+      } else if(dpMode === 'dollar' && price > 0) {
+        const dollarAmt = parseFloat(document.getElementById('downPayment').value.replace(/,/g,'')) || 0;
+        const pctAmt = price > 0 ? (dollarAmt/price*100).toFixed(1) : 0;
+        note.textContent = dollarAmt > 0 ? `= ${pctAmt}% of purchase price` : '';
+        note.style.display = dollarAmt > 0 ? 'block' : 'none';
+      } else {
+        note.style.display = 'none';
+      }
+    }
+
+    // ── Pre-fill maintenance & tax increase on purchase price blur ──
+    document.getElementById('purchasePrice').addEventListener('blur', function() {
+      const val = parseFloat(this.value.replace(/,/g,'')) || 0;
+      const m = document.getElementById('maintenance');
+      if(!m.value && val > 0) m.value = Math.round(val * 0.01).toLocaleString('en-US');
+      const ti = document.getElementById('taxIncrease');
+      if(!ti.value) ti.value = '2';
+      updateDpNote(val);
+    });
+
+    // Show dp note on input
+    document.getElementById('downPayment').addEventListener('input', function() {
+      const price = parseFloat(document.getElementById('purchasePrice').value.replace(/,/g,'')) || 0;
+      updateDpNote(price);
+    });
+    document.getElementById('downPaymentPct').addEventListener('input', function() {
+      const price = parseFloat(document.getElementById('purchasePrice').value.replace(/,/g,'')) || 0;
+      updateDpNote(price);
+    });
+
+    // ── Comma formatting ──
+    const noCommaIds = ['rate','term','yearsOwn','taxIncrease','downPaymentPct'];
+    document.querySelectorAll('input[type=text]').forEach(input => {
+      if(noCommaIds.includes(input.id)) return;
+      input.addEventListener('blur', function() {
+        const n = parseFloat(this.value.replace(/,/g,''));
+        if(!isNaN(n) && n > 0) this.value = n.toLocaleString('en-US');
+      });
+      input.addEventListener('focus', function() {
+        const n = parseFloat(this.value.replace(/,/g,''));
+        if(!isNaN(n) && n > 0) this.value = n;
+      });
+    });
+
+    function toggleReno() {
+      document.getElementById('renoTable').classList.toggle('open');
+    }
+
+    let selectedAppr = 'expected';
+    function selectAppr(val) {
+      selectedAppr = val;
+      ['conservative','expected','optimistic'].forEach(k =>
+        document.getElementById('pill-'+k).classList.toggle('active', k === val));
+    }
+
+    function calcLoanPayment(principal, annualRate, termYears) {
+      if(principal <= 0) return 0;
+      if(annualRate === 0) return principal / (termYears * 12);
+      const r = annualRate / 100 / 12, n = termYears * 12;
+      return (principal * r * Math.pow(1+r,n)) / (Math.pow(1+r,n) - 1);
+    }
+
+    function getVal(id) {
+      return parseFloat(document.getElementById(id).value.replace(/,/g,'')) || 0;
+    }
+
+    function calculate() {
+      const purchasePrice = getVal('purchasePrice');
+      const rate          = getVal('rate');
+      const term          = getVal('term') || 30;
+      const annualTax     = getVal('annualTax');
+      const taxIncreaseRate = (getVal('taxIncrease') || 2) / 100;
+      const yearsOwn      = getVal('yearsOwn') || 10;
+      const maintenance   = getVal('maintenance');
+      const renovations   = getVal('renovations');
+      const downPayment   = getDownPayment(purchasePrice);
+
+      if(!purchasePrice || !rate) {
+        alert('Please enter at least a purchase price and interest rate.');
+        return;
+      }
+
+      const extraMonthly  = getVal('extraMonthly');
+      const extraLumpSum  = getVal('extraLumpSum');
+      const loan = Math.max(0, purchasePrice - downPayment);
+      const monthlyPayment = calcLoanPayment(loan, rate, term);
+      const monthsOwn = Math.min(yearsOwn * 12, term * 12);
+
+      // Pass 1: full loan term — find actual payoff month
+      let actualPayoffMonth = term * 12;
+      {
+        let bal = loan;
+        for(let m = 0; m < term * 12; m++) {
+          if(bal <= 0) { actualPayoffMonth = m; break; }
+          const i = bal * (rate / 100 / 12);
+          const p = monthlyPayment - i;
+          const lump = (m > 0 && m % 12 === 0) ? extraLumpSum : 0;
+          bal = Math.max(0, bal - p - extraMonthly - lump);
+          if(bal <= 0) { actualPayoffMonth = m + 1; break; }
+        }
+      }
+
+      // Pass 2: up to ownership period — track interest paid and balance at sale
+      let totalInterest = 0;
+      let balanceAtSale = loan;
+      for(let m = 0; m < monthsOwn; m++) {
+        if(balanceAtSale <= 0) break;
+        const i = balanceAtSale * (rate / 100 / 12);
+        const p = monthlyPayment - i;
+        const lump  = (m > 0 && m % 12 === 0) ? extraLumpSum : 0;
+        const extra = Math.min(extraMonthly + lump, Math.max(0, balanceAtSale - p));
+        totalInterest += i;
+        balanceAtSale = Math.max(0, balanceAtSale - p - extra);
+      }
+      const remainingBalanceAtSale = balanceAtSale;
+
+      // Extra principal savings note
+      const standardPayoffMonths = term * 12;
+      const hasExtra = extraMonthly > 0 || extraLumpSum > 0;
+      const monthsSaved = hasExtra ? Math.max(0, standardPayoffMonths - actualPayoffMonth) : 0;
+      const yearsSaved = Math.floor(monthsSaved / 12);
+      const moSaved = monthsSaved % 12;
+      const noteEl = document.getElementById('extra-principal-note');
+      if(hasExtra && monthsSaved > 0) {
+        noteEl.style.display = 'block';
+        const timeStr = yearsSaved > 0
+          ? `${yearsSaved} yr${yearsSaved>1?'s':''}`+(moSaved>0?` ${moSaved} mo`:'')
+          : `${moSaved} months`;
+        const parts = [];
+        if(extraMonthly > 0) parts.push(`$${extraMonthly.toLocaleString()}/mo`);
+        if(extraLumpSum > 0) parts.push(`$${extraLumpSum.toLocaleString()}/yr lump sum`);
+        noteEl.textContent = `✓ With ${parts.join(' + ')} extra, you'd pay off ${timeStr} early.`;
+      } else if(hasExtra && monthsSaved === 0) {
+        noteEl.style.display = 'block';
+        noteEl.textContent = '✓ Extra payments applied — loan pays off on schedule within your ownership period.';
+      } else {
+        noteEl.style.display = 'none';
+      }
+
+      // Property taxes with annual increase compounded year-over-year
+      let totalTaxes = 0;
+      let taxThisYear = annualTax;
+      for(let y = 0; y < yearsOwn; y++) {
+        totalTaxes += taxThisYear;
+        taxThisYear *= (1 + taxIncreaseRate);
+      }
+      const finalYearTax = annualTax * Math.pow(1 + taxIncreaseRate, yearsOwn - 1);
+
+      const totalMaintenance = maintenance * yearsOwn;
+      const totalSpent = purchasePrice + totalInterest + totalTaxes + totalMaintenance + renovations;
+
+      // Fill ledger
+      document.getElementById('r-purchase').textContent    = fmt(purchasePrice);
+      document.getElementById('r-interest').textContent    = fmt(totalInterest);
+      document.getElementById('r-taxes').textContent       = fmt(totalTaxes) + ` (starts ${fmt(annualTax)}/yr → ${fmt(finalYearTax)}/yr)`;
+      document.getElementById('r-maintenance').textContent = fmt(totalMaintenance);
+      document.getElementById('r-renovations').textContent = fmt(renovations);
+      document.getElementById('r-reno-row').style.display  = renovations > 0 ? 'flex' : 'none';
+      // Show remaining balance only when selling before loan payoff
+      const showBalance = remainingBalanceAtSale > 100 && yearsOwn < term;
+      document.getElementById('r-balance-row').style.display = showBalance ? 'flex' : 'none';
+      document.getElementById('r-balance').textContent = fmt(remainingBalanceAtSale);
+      document.getElementById('r-total').textContent       = fmt(totalSpent);
+
+      // Scenarios
+      const scenarios = [
+        { key:'conservative', apprRate:0.02 },
+        { key:'expected',     apprRate:0.035 },
+        { key:'optimistic',   apprRate:0.05 },
+      ];
+
+      scenarios.forEach(({ key, apprRate }) => {
+        const salePrice = purchasePrice * Math.pow(1 + apprRate, yearsOwn);
+        const equity    = salePrice - remainingBalanceAtSale;
+        const nonPrincipalCosts = totalInterest + totalTaxes + totalMaintenance + renovations;
+        const netPosition = equity - downPayment - nonPrincipalCosts;
+        const totalCashIn = downPayment + nonPrincipalCosts;
+        const annualizedROI = totalCashIn > 0
+          ? (Math.pow(Math.max(0, equity) / totalCashIn, 1/yearsOwn) - 1)
+          : 0;
+
+        const homeValEl = document.getElementById('sc-homeval-'+key);
+        const valEl     = document.getElementById('sc-val-'+key);
+        const subEl     = document.getElementById('sc-sub-'+key);
+        const roiEl     = document.getElementById('sc-roi-'+key);
+        const cardEl    = document.getElementById('sc-'+key);
+
+        const isPositive = netPosition >= 0;
+        homeValEl.textContent = `🏠 Est. value: ${fmt(salePrice)}`;
+        valEl.textContent     = fmt(Math.abs(netPosition));
+        valEl.style.color     = isPositive ? '#059669' : '#DC2626';
+        subEl.textContent     = isPositive ? 'true net gain' : 'true net loss';
+        roiEl.textContent     = `${(annualizedROI*100).toFixed(1)}%/yr annualized`;
+        roiEl.style.color     = isPositive ? '#059669' : '#DC2626';
+        cardEl.className      = 'scenario-card ' + (isPositive ? 'positive' : 'negative');
+      });
+
+      // Show results
+      const r = document.getElementById('results');
+      r.classList.add('visible');
+      setTimeout(() => r.scrollIntoView({ behavior:'smooth', block:'start' }), 50);
+    }
+  </script>
+</body>
+</html>
