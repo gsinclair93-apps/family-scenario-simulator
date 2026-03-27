@@ -1433,7 +1433,7 @@ function SkippedResults({ r, sc, onAddIncome, b, summary="" }) {
       </div>
 
       {/* Affiliate links — always visible */}
-      <LeadCapture sc={sc} r={r} b={b} summary={summary} />
+      <LeadCapture sc={sc} r={r} b={b} summary={summary} onAddIncome={onAddIncome} />
     </div>
   );
 }
@@ -1529,9 +1529,23 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
         </div>
       )}
 
-      {/* Skipped baseline — show payment breakdown + income nudge */}
-      {!ready && scenarioReady && skipped && (
+      {/* Skipped baseline — home gets cost breakdown, all others get clean gate */}
+      {!ready && scenarioReady && skipped && sc.type === "home" && (
         <SkippedResults r={r} sc={sc} onAddIncome={onAddIncome} b={b} summary={summary} />
+      )}
+      {!ready && scenarioReady && skipped && sc.type !== "home" && (
+        <div style={{ textAlign:"center",padding:"36px 24px",background:"#F5F3FF",border:"1.5px solid #DDD6FE",borderRadius:20,marginBottom:14 }}>
+          <div style={{ fontSize:32,marginBottom:12 }}>📊</div>
+          <div style={{ fontSize:15,fontWeight:900,color:"#4338CA",marginBottom:8 }}>Add your income to see your results</div>
+          <div style={{ fontSize:13,color:"#6B7280",fontWeight:500,lineHeight:1.65,marginBottom:20 }}>
+            This scenario requires your income and expenses to calculate a meaningful result.
+            Without baseline numbers, the analysis would be misleading.
+          </div>
+          <button onClick={onAddIncome}
+            style={{ background:"#4338CA",color:"#fff",border:"none",borderRadius:12,padding:"12px 28px",fontSize:13,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 14px rgba(67,56,202,0.3)",fontFamily:"inherit" }}>
+            Add my income →
+          </button>
+        </div>
       )}
 
       {/* All results — only shown when ready */}
@@ -1934,7 +1948,7 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
 
       </>)}
 
-      {ready && <LeadCapture sc={sc} r={r} b={b} summary={summary} />}
+      {ready && <LeadCapture sc={sc} r={r} b={b} summary={summary} onAddIncome={onAddIncome} />}
 
       {ready && <p style={{ textAlign:"center",fontSize:10.5,color:"#D1D5DB",marginTop:18,lineHeight:1.6 }}>
         Cash-flow analysis — not a loan approval estimate.<br />Consult a financial advisor before major decisions.
@@ -1944,7 +1958,7 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
 }
 
 // ─── LEAD CAPTURE ─────────────────────────────────────────────────────────────
-function LeadCapture({ sc, r, b, summary }) {
+function LeadCapture({ sc, r, b, summary, onAddIncome }) {
   const [email, setEmail]       = useState("");
   const [subscribe, setSubscribe] = useState(true);
   const [status, setStatus]     = useState("idle"); // idle | submitting | done | error
@@ -1952,9 +1966,10 @@ function LeadCapture({ sc, r, b, summary }) {
 
   const resultsText = (() => {
     const lines = [];
+    const noBaseline = !r.netIncome || r.netIncome === 0;
     lines.push(`Scenario: ${sc.type}`);
-    lines.push(`Verdict: ${r.risk}`);
-    if(summary) lines.push(`Summary: ${summary}`);
+    lines.push(`Verdict: ${noBaseline ? "ESTIMATE" : r.risk}`);
+    if(summary && !noBaseline) lines.push(`Summary: ${summary}`);
     if(r.netIncome)    lines.push(`Take-home income: $${Math.round(r.netIncome).toLocaleString()}/mo`);
     if(r.newSurplus != null) lines.push(`Monthly surplus: $${Math.round(r.newSurplus).toLocaleString()}/mo`);
     if(r.ratio)        lines.push(`Cost ratio: ${(r.ratio*100).toFixed(1)}%`);
@@ -2009,6 +2024,23 @@ function LeadCapture({ sc, r, b, summary }) {
       setStatus("error");
     }
   };
+
+  // For non-home scenarios, require baseline income to show email capture
+  const isHomeSkipped = sc.type === "home" && (!r.netIncome || r.netIncome === 0);
+  const needsBaseline = sc.type !== "home" && (!r.netIncome || r.netIncome === 0);
+
+  if(needsBaseline) return (
+    <div style={{ marginTop:20,background:"#F5F3FF",border:"1.5px solid #DDD6FE",borderRadius:20,padding:"24px 22px",textAlign:"center" }}>
+      <div style={{ fontSize:13,fontWeight:900,color:"#4338CA",marginBottom:6 }}>Want to save your results?</div>
+      <div style={{ fontSize:12,color:"#6B7280",fontWeight:500,lineHeight:1.6,marginBottom:16 }}>
+        Add your income on the Baseline tab to unlock your full personalized results and email summary.
+      </div>
+      <button onClick={onAddIncome}
+        style={{ background:"#4338CA",color:"#fff",border:"none",borderRadius:11,padding:"10px 22px",fontSize:12.5,fontWeight:800,cursor:"pointer",fontFamily:"inherit" }}>
+        Add my income →
+      </button>
+    </div>
+  );
 
   if(status === "done") return (
     <div style={{ marginTop:20,background:"#ECFDF5",border:"1.5px solid #6EE7B7",borderRadius:20,padding:"24px 22px",textAlign:"center" }}>

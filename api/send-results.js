@@ -28,12 +28,13 @@ export default async function handler(req) {
     };
 
     const scenarioLabel = scenarioLabels[scenario] || "Scenario";
+    const isEstimate = risk === "ESTIMATE";
 
-    const riskColor  = risk === "SAFE" ? "#059669" : risk === "STRETCH" ? "#92400e" : "#991b1b";
-    const verdictBg  = risk === "SAFE" ? "#dcfce7"  : risk === "STRETCH" ? "#fef9c3"  : "#fee2e2";
-    const verdictBdr = risk === "SAFE" ? "#86efac"  : risk === "STRETCH" ? "#fde047"  : "#fca5a5";
-    const verdictWord = risk === "SAFE" ? "Safe" : risk === "STRETCH" ? "Stretch" : "Risky";
-    const verdictIcon = risk === "SAFE" ? "\u2756" : risk === "STRETCH" ? "\u25C8" : "\u25C6";
+    const riskColor  = isEstimate ? "#4338CA" : risk === "SAFE" ? "#059669" : risk === "STRETCH" ? "#92400e" : "#991b1b";
+    const verdictBg  = isEstimate ? "#EEF2FF" : risk === "SAFE" ? "#dcfce7"  : risk === "STRETCH" ? "#fef9c3"  : "#fee2e2";
+    const verdictBdr = isEstimate ? "#C7D2FE" : risk === "SAFE" ? "#86efac"  : risk === "STRETCH" ? "#fde047"  : "#fca5a5";
+    const verdictWord = isEstimate ? "Cost Estimate" : risk === "SAFE" ? "Safe" : risk === "STRETCH" ? "Stretch" : "Risky";
+    const verdictIcon = isEstimate ? "\uD83C\uDFE0" : risk === "SAFE" ? "\u2756" : risk === "STRETCH" ? "\u25C8" : "\u25C6";
 
     const lines = (results || "").split("\n").filter(Boolean);
     const summaryLine = (lines.find(l => l.startsWith("Summary:")) || "").replace("Summary: ", "");
@@ -66,7 +67,7 @@ export default async function handler(req) {
 
       "<div style='background:#34D399;border-radius:16px 16px 0 0;padding:22px 28px 20px'>" +
       "<div style='font-size:11px;font-weight:800;color:rgba(0,0,0,0.4);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px'>Can We Afford This?</div>" +
-      "<div style='font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.02em'>" + scenarioLabel + " Results</div>" +
+      "<div style='font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.02em'>" + scenarioLabel + (isEstimate ? " Cost Estimate" : " Results") + "</div>" +
       "</div>" +
 
       "<div style='background:" + verdictBg + ";border:2px solid " + verdictBdr + ";border-top:none;padding:20px 28px 18px'>" +
@@ -102,7 +103,7 @@ export default async function handler(req) {
       body: JSON.stringify({
         from: "Can We Afford This? <results@canweaffordthis.com>",
         to: [email],
-        subject: "Your " + scenarioLabel + " Results - Can We Afford This?",
+        subject: (isEstimate ? "Your " + scenarioLabel + " Cost Estimate" : "Your " + scenarioLabel + " Results") + " - Can We Afford This?",
         html,
       }),
     });
