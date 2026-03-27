@@ -2026,7 +2026,6 @@ function LeadCapture({ sc, r, b, summary, onAddIncome }) {
   };
 
   // For non-home scenarios, require baseline income to show email capture
-  const isHomeSkipped = sc.type === "home" && (!r.netIncome || r.netIncome === 0);
   const needsBaseline = sc.type !== "home" && (!r.netIncome || r.netIncome === 0);
 
   if(needsBaseline) return (
