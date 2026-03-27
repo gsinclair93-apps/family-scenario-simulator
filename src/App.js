@@ -1368,7 +1368,7 @@ function StressBar({ ratio, passThreshold, warnThreshold, pass, warn }) {
 }
 
 // ─── SKIPPED BASELINE RESULTS ────────────────────────────────────────────────
-function SkippedResults({ r, sc, onAddIncome, b }) {
+function SkippedResults({ r, sc, onAddIncome, b, summary="" }) {
   const meta = SCENARIO_META[sc.type];
 
   // Build a simple payment breakdown based on scenario type
@@ -1433,7 +1433,7 @@ function SkippedResults({ r, sc, onAddIncome, b }) {
       </div>
 
       {/* Affiliate links — always visible */}
-      <LeadCapture sc={sc} r={r} b={b} />
+      <LeadCapture sc={sc} r={r} b={b} summary={summary} />
     </div>
   );
 }
@@ -1531,7 +1531,7 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
 
       {/* Skipped baseline — show payment breakdown + income nudge */}
       {!ready && scenarioReady && skipped && (
-        <SkippedResults r={r} sc={sc} onAddIncome={onAddIncome} b={b} />
+        <SkippedResults r={r} sc={sc} onAddIncome={onAddIncome} b={b} summary={summary} />
       )}
 
       {/* All results — only shown when ready */}
@@ -1934,7 +1934,7 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
 
       </>)}
 
-      {ready && <LeadCapture sc={sc} r={r} b={b} />}
+      {ready && <LeadCapture sc={sc} r={r} b={b} summary={summary} />}
 
       {ready && <p style={{ textAlign:"center",fontSize:10.5,color:"#D1D5DB",marginTop:18,lineHeight:1.6 }}>
         Cash-flow analysis — not a loan approval estimate.<br />Consult a financial advisor before major decisions.
@@ -1944,7 +1944,7 @@ function ResultsTab({ r, sc, ready, skipped, onAddIncome, scenarioReady, b }) {
 }
 
 // ─── LEAD CAPTURE ─────────────────────────────────────────────────────────────
-function LeadCapture({ sc, r, b }) {
+function LeadCapture({ sc, r, b, summary }) {
   const [email, setEmail]       = useState("");
   const [subscribe, setSubscribe] = useState(true);
   const [status, setStatus]     = useState("idle"); // idle | submitting | done | error
