@@ -2198,6 +2198,10 @@ export default function App() {
                 style={{ fontSize:11.5,fontWeight:800,color:"#fff",background:"rgba(0,0,0,0.12)",border:"1.5px solid rgba(255,255,255,0.25)",borderRadius:10,padding:"6px 12px",cursor:"pointer",transition:"all 0.15s",textDecoration:"none" }}>
                 📝 Blog
               </a>
+              <a href="mailto:info@canweaffordthis.com"
+                style={{ fontSize:11.5,fontWeight:800,color:"#fff",background:"rgba(0,0,0,0.12)",border:"1.5px solid rgba(255,255,255,0.25)",borderRadius:10,padding:"6px 12px",cursor:"pointer",transition:"all 0.15s",textDecoration:"none" }}>
+                ✉️ Contact
+              </a>
               <button onClick={()=>{ setB(DEFAULT_B); setSc(DEFAULT_SC_CLEAN); setTab(0); }}
                 style={{ fontSize:11.5,fontWeight:800,color:"#fff",background:"rgba(0,0,0,0.12)",border:"1.5px solid rgba(255,255,255,0.25)",borderRadius:10,padding:"6px 12px",cursor:"pointer",transition:"all 0.15s" }}
                 onMouseOver={e=>{e.currentTarget.style.background="rgba(0,0,0,0.22)";}}
